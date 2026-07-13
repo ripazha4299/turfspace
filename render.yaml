@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: turfspace-api
+    runtime: node
+    rootDir: server
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    disk:
+      name: turfspace-data
+      mountPath: /opt/render/project/src/server/data
+      sizeGB: 1
+    envVars:
+      - key: PORT
+        value: 4000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLIENT_ORIGIN
+        value: https://your-frontend.vercel.app
+      - key: DB_PATH
+        value: /opt/render/project/src/server/data/turfspace.db
+      - key: UPLOADS_DIR
+        value: /opt/render/project/src/server/data/uploads
