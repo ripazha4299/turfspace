@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment files
+.env
+.env.*
+
+# Build output
+/dist/
+/build/
+
+# Cache and temp files
+.cache/
+.tmp/
+*.tsbuildinfo
+
+# OS/editor junk
+.DS_Store
+Thumbs.db
