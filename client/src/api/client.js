@@ -71,6 +71,7 @@ export const api = {
 
   createBooking: (payload, token) => request('/bookings', { method: 'POST', body: payload, token }),
   payBooking: (id, token) => request(`/bookings/${id}/pay`, { method: 'POST', token }),
+  leaveBooking: (id, token) => request(`/bookings/${id}/leave`, { method: 'POST', token }),
   openBookings: (params) => request(`/bookings/open?${new URLSearchParams(params)}`),
   joinBooking: (id, token) => request(`/bookings/${id}/join`, { method: 'POST', token }),
   getBooking: (id) => request(`/bookings/${id}`),
@@ -80,4 +81,8 @@ export const api = {
   flagNoShow: (id, discount_pct, token) =>
     request(`/bookings/${id}/no-show`, { method: 'POST', body: { discount_pct }, token }),
   noShowDeals: (params) => request(`/bookings/deals/no-show?${new URLSearchParams(params)}`),
+
+  notifications: (token) => request('/notifications', { token }),
+  markNotificationRead: (id, token) => request(`/notifications/${id}/read`, { method: 'POST', token }),
+  markAllNotificationsRead: (token) => request('/notifications/read-all', { method: 'POST', token }),
 };

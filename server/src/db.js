@@ -73,9 +73,20 @@ CREATE TABLE IF NOT EXISTS booking_participants (
   UNIQUE(booking_id, user_id)
 );
 
+CREATE TABLE IF NOT EXISTS notifications (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type TEXT NOT NULL,
+  message TEXT NOT NULL,
+  booking_id TEXT REFERENCES bookings(id) ON DELETE CASCADE,
+  is_read INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_turfs_city ON turfs(city);
 CREATE INDEX IF NOT EXISTS idx_bookings_turf ON bookings(turf_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_date ON bookings(booking_date);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
 `);
 
 module.exports = db;

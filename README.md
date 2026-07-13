@@ -90,6 +90,66 @@ uses the simpler search/detail pages built in the original MVP pass.
 columns). If you still have a `turfspace.db` file from before this update, delete it before starting
 the server again — `CREATE TABLE IF NOT EXISTS` won't retrofit new columns onto an existing table.
 
+## Quickest way to run this locally
+
+From the **repo root** (not inside `server/` or `client/`):
+
+```bash
+npm install          # installs the two small root devDependencies (concurrently, wait-on)
+npm run install:all  # installs server/ deps, then client/ deps, one after the other
+```
+
+Then create your env files (one time only):
+```bash
+cp server/.env.example server/.env   # edit JWT_SECRET to any long random string
+cp client/.env.example client/.env
+```
+
+Then every time you want to run the app:
+```bash
+npm run dev
+```
+This starts the backend first, waits for its `/api/health` endpoint to actually respond, and only
+then starts the frontend dev server — so you never hit "failed to fetch" errors from the client
+starting before the API is ready. Both processes' logs are labeled `SERVER` / `CLIENT` in the same
+terminal; Ctrl+C stops both.
+
+If you'd rather run them separately (e.g. in two terminal tabs), the original per-folder instructions
+below still work exactly the same way.
+
+## Latest round of fixes (mobile nav, notifications, ticket-style modals, and more)
+
+- **Mobile nav** — the top navbar collapses into a hamburger menu below ~800px instead of overflowing.
+- **Join-booking popup** — joining an open game (from the PDP panel or the "Join a game" page) now
+  opens the same ticket-styled confirmation popup used for booking, instead of joining instantly.
+- **Leave a joined game** — "Games I joined" in My Bookings now has a **Leave game** button
+  (`POST /api/bookings/:id/leave`). No fee applies since joiners never paid anything.
+- **Notifications** — the turf owner is notified in-app (bell icon, top right) whenever someone joins
+  or leaves their open booking. A small `notifications` table backs this; the bell polls every 30s.
+  This is in-app only — no email/push, which would need a mail/push provider this sandbox can't reach.
+- **PDP layout changes**: turf title + location now sit above the hero image; the "About" (description)
+  section moved to the right column, below the open-bookings panel; the middle availability list was
+  removed (the open-bookings panel + booking-time validation already cover that); the top bar (back
+  button, sport, city, date) is now a solid, more prominent banner.
+- **PLP image carousel** now auto-rotates every 1500ms instead of requiring hover.
+- **Ticket-styled modals** — confirm-booking, join-booking, and the new read-only booking-detail popups
+  all use a shared `TicketModal` component styled like a match ticket: ~2/3 details + actions on the
+  left, ~1/3 turf photo/name/location "stub" on the right, with a dashed perforation between them.
+- **Clickable bookings everywhere** — rows in My Bookings (both "created" and "joined") and in the
+  Owner Dashboard's booking calendar now open a read-only ticket popup with full details. Monetary
+  fields (total, amount due, amount paid, refund) are visually highlighted. The "joined" ticket
+  highlights who created the game; the owner's calendar ticket highlights who booked it. The turf name
+  inside any ticket popup is a link to that turf's PDP.
+- **My Bookings layout** — "Bookings I created" and "Games I joined" now sit side-by-side on large
+  screens (≥992px), stacked on mobile. A "Show cancelled" checkbox filters cancelled bookings out of
+  both lists by default.
+- **Owner sport selection** — the turf create/edit form now uses a dropdown restricted to the same
+  sport list used in the PLP's filter sidebar (`client/src/constants.js`), so a turf's sport always
+  matches something a player can filter by.
+- **Player/turf icons** — 👤 next to player names, 🏠 next to turf-owner context, used in the navbar,
+  My Bookings, and the Owner Dashboard's calendar.
+- **Cross-turf double-booking** — see the earlier "Latest fixes" section below; still in place.
+
 ## Latest fixes (turf editing, double-booking, time slot precision)
 
 - **Owner turf editing**: the Owner Dashboard's turf list now has an **Edit** button per turf, opening

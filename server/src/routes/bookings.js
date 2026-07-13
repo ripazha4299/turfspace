@@ -2,6 +2,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const { createNotification } = require('./notifications');
 
 const router = express.Router();
 
@@ -254,11 +255,48 @@ router.post('/:id/join', requireAuth, requireRole('player'), (req, res) => {
     `INSERT INTO booking_participants (id, booking_id, user_id) VALUES (?, ?, ?)`
   ).run(uuidv4(), req.params.id, req.user.id);
 
+  const turf = db.prepare('SELECT name FROM turfs WHERE id = ?').get(booking.turf_id);
+  createNotification(
+    booking.created_by,
+    'joined_your_game',
+    `${req.user.name} joined your open game at ${turf ? turf.name : 'your turf'} on ${booking.booking_date} (${booking.start_time}–${booking.end_time}).`,
+    booking.id
+  );
+
   const participants = db.prepare(
     `SELECT u.id, u.name FROM booking_participants bp JOIN users u ON bp.user_id = u.id WHERE bp.booking_id = ?`
   ).all(req.params.id);
 
   res.json({ booking, participants });
+});
+
+// POST /api/bookings/:id/leave -- a participant (not the creator) backs out of
+// an open booking they joined. No payment was involved for joiners, so this is
+// just a participation removal -- the creator's own booking/payment is untouched.
+// Notifies the creator, mirroring the join notification.
+router.post('/:id/leave', requireAuth, requireRole('player'), (req, res) => {
+  const booking = db.prepare('SELECT * FROM bookings WHERE id = ?').get(req.params.id);
+  if (!booking) return res.status(404).json({ error: 'Booking not found' });
+  if (booking.created_by === req.user.id) {
+    return res.status(400).json({ error: 'You created this booking -- use cancel instead of leave' });
+  }
+
+  const participant = db.prepare(
+    'SELECT id FROM booking_participants WHERE booking_id = ? AND user_id = ?'
+  ).get(req.params.id, req.user.id);
+  if (!participant) return res.status(404).json({ error: "You haven't joined this booking" });
+
+  db.prepare('DELETE FROM booking_participants WHERE id = ?').run(participant.id);
+
+  const turf = db.prepare('SELECT name FROM turfs WHERE id = ?').get(booking.turf_id);
+  createNotification(
+    booking.created_by,
+    'left_your_game',
+    `${req.user.name} left your open game at ${turf ? turf.name : 'your turf'} on ${booking.booking_date} (${booking.start_time}–${booking.end_time}).`,
+    booking.id
+  );
+
+  res.json({ ok: true });
 });
 
 // GET /api/bookings/:id -- detail with participants
@@ -305,9 +343,9 @@ router.post('/:id/cancel', requireAuth, (req, res) => {
 // GET /api/bookings/owner/calendar -- Epic 5, P0 (booking calendar for turf owner)
 router.get('/owner/calendar', requireAuth, requireRole('owner'), (req, res) => {
   const bookings = db.prepare(
-    `SELECT b.*, t.name as turf_name,
+    `SELECT b.*, t.name as turf_name, t.city as turf_city, t.address as turf_address, t.cover_image as turf_cover_image,
        (SELECT COUNT(*) FROM booking_participants bp WHERE bp.booking_id = b.id) as joined_count,
-       u.name as created_by_name
+       u.name as created_by_name, u.email as created_by_email
      FROM bookings b
      JOIN turfs t ON b.turf_id = t.id
      JOIN users u ON b.created_by = u.id

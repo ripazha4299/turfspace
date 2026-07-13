@@ -1,12 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
-
-const SPORT_OPTIONS = ['Football', 'Cricket', 'Badminton', 'Tennis', 'Basketball'];
+import { SPORT_OPTIONS } from '../constants';
 
 function TurfCard({ turf }) {
   const images = turf.cover_image ? [turf.cover_image, ...(turf.gallery || [])] : (turf.gallery || []);
   const [activeImg, setActiveImg] = useState(0);
+
+  // Auto-rotates the cover carousel every 1.5s while the card is visible on the page.
+  useEffect(() => {
+    if (images.length <= 1) return;
+    const interval = setInterval(() => {
+      setActiveImg((i) => (i + 1) % images.length);
+    }, 1500);
+    return () => clearInterval(interval);
+  }, [images.length]);
 
   return (
     <Link to={`/turfs/${turf.id}`} className="card turf-card">
@@ -15,13 +23,9 @@ function TurfCard({ turf }) {
           <img src={images[activeImg]} alt={turf.name} onError={(e) => { e.target.style.display = 'none'; }} />
         ) : null}
         {images.length > 1 && (
-          <div className="carousel-dots" onMouseEnter={(e) => e.stopPropagation()}>
+          <div className="carousel-dots">
             {images.map((_, i) => (
-              <span
-                key={i}
-                className={i === activeImg ? 'active' : ''}
-                onMouseEnter={(e) => { e.preventDefault(); setActiveImg(i); }}
-              />
+              <span key={i} className={i === activeImg ? 'active' : ''} />
             ))}
           </div>
         )}

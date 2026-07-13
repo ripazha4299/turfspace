@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import TimeSlotPicker from '../components/TimeSlotPicker';
+import TicketModal from '../components/TicketModal';
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -17,7 +18,7 @@ function durationHours(start, end) {
 function formatDateNice(iso) {
   if (!iso) return '';
   const d = new Date(`${iso}T00:00:00`);
-  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export default function TurfDetail() {
@@ -27,7 +28,6 @@ export default function TurfDetail() {
 
   const [turf, setTurf] = useState(null);
   const [date, setDate] = useState(todayISO());
-  const [availability, setAvailability] = useState([]);
   const [openForTurf, setOpenForTurf] = useState([]);
 
   const [bookingType, setBookingType] = useState('private');
@@ -54,11 +54,6 @@ export default function TurfDetail() {
   useEffect(() => {
     api.getTurf(id).then((data) => setTurf(data.turf));
   }, [id]);
-
-  useEffect(() => {
-    if (!date) return;
-    api.getAvailability(id, date).then((data) => setAvailability(data.bookings));
-  }, [id, date]);
 
   function loadOpenForTurf() {
     api.openBookings({ turf_id: id }).then((data) => setOpenForTurf(data.bookings));
@@ -119,7 +114,6 @@ export default function TurfDetail() {
   async function handleCancelPending() {
     try { await api.cancelBooking(pendingBooking.id, token); } catch (e) { /* best effort */ }
     setPendingBooking(null);
-    api.getAvailability(id, date).then((data) => setAvailability(data.bookings));
     loadOpenForTurf();
   }
 
@@ -141,7 +135,6 @@ export default function TurfDetail() {
       await api.joinBooking(joiningBooking.id, token);
       setJoiningBooking(null);
       loadOpenForTurf();
-      api.getAvailability(id, date).then((data) => setAvailability(data.bookings));
     } catch (err) {
       setJoinError(err.message);
     } finally {
@@ -155,17 +148,24 @@ export default function TurfDetail() {
 
   return (
     <div className="page">
-      <div className="pdp-header">
+      <div className="pdp-topbar">
         <button className="pdp-back-btn" onClick={() => navigate(-1)}>← Back</button>
-        <div className="pdp-header-context">
-          <strong>{turf.sport_type}</strong> · {turf.city} ·{' '}
+        <div className="pdp-topbar-context">
+          <span className="pdp-topbar-pill">{turf.sport_type}</span>
+          <span className="pdp-topbar-pill">{turf.city}</span>
           <input
             type="date"
+            className="pdp-topbar-date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            style={{ border: 'none', font: 'inherit', color: 'inherit', background: 'transparent' }}
           />
         </div>
+      </div>
+
+      {/* Title + location sit above the hero image */}
+      <div className="pdp-title-block">
+        <h1>{turf.name}</h1>
+        <p className="subtle">{turf.address ? `${turf.address} · ` : ''}{turf.city}</p>
       </div>
 
       <div className="pdp-layout">
@@ -204,14 +204,9 @@ export default function TurfDetail() {
           </p>
         </div>
 
-        {/* Center: turf info + booking widget */}
+        {/* Center: booking widget only -- availability list removed, the
+            right-hand open-bookings panel already covers that */}
         <div>
-          <div className="card">
-            <h1 style={{ marginTop: 0 }}>{turf.name}</h1>
-            <p className="subtle">{turf.address ? `${turf.address} · ` : ''}{turf.city}</p>
-            {turf.description && <p>{turf.description}</p>}
-          </div>
-
           <div className="card">
             <h2>Book this turf</h2>
             <form className="form" onSubmit={handleBook}>
@@ -250,28 +245,14 @@ export default function TurfDetail() {
               </button>
             </form>
           </div>
-
-          {availability.length > 0 && (
-            <div className="card">
-              <h2>Availability on {formatDateNice(date)}</h2>
-              <ul className="availability-list">
-                {availability.map((b) => (
-                  <li key={b.id}>
-                    {b.start_time}–{b.end_time} · {b.booking_type === 'open' ? `Open game (${b.joined_count}/${b.max_players})` : 'Booked (private)'}
-                    {b.status === 'pending_payment' ? ' · payment pending' : ''}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
         </div>
 
-        {/* Right: joinable open bookings */}
+        {/* Right: joinable open bookings, then About below it */}
         <div>
           <div className="open-bookings-panel">
             <h3 style={{ marginTop: 0 }}>Available Open Bookings</h3>
             {openForTurf.length === 0 ? (
-              <p className="subtle small">No open games to join right now. Be the first — book above and mark it open.</p>
+              <p className="subtle small">No open games to join right now. Be the first — book and mark it open.</p>
             ) : (
               openForTurf.map((b) => (
                 <div key={b.id} className="open-booking-card" onClick={() => openJoinPopup(b)}>
@@ -282,6 +263,13 @@ export default function TurfDetail() {
               ))
             )}
           </div>
+
+          {turf.description && (
+            <div className="card" style={{ marginTop: 16 }}>
+              <h3 style={{ marginTop: 0 }}>About</h3>
+              <p className="subtle">{turf.description}</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -292,50 +280,66 @@ export default function TurfDetail() {
       )}
 
       {pendingBooking && (
-        <div className="popup-overlay">
-          <div className="popup-card">
-            <h2>{pendingBooking.payment_type === 'free' ? 'Booking confirmed' : 'Confirm booking'}</h2>
-            <div className="popup-summary">
-              <p><strong>{turf.name}</strong></p>
-              <p className="subtle">{turf.city}</p>
-              <p>{pendingBooking.booking_date} · {pendingBooking.start_time}–{pendingBooking.end_time}</p>
-              <p className="subtle small">{pendingBooking.booking_type === 'open' ? 'Open booking' : 'Private booking'} · {pendingBooking.payment_type} payment</p>
-              {pendingBooking.payment_type !== 'free' && <p className="price">Amount due: ₹{pendingBooking.amount_due}</p>}
-            </div>
-            {payError && <div className="error-text">{payError}</div>}
-            {pendingBooking.payment_type === 'free' ? (
-              <button className="btn-primary" onClick={handleClosePopupAfterFree}>Go to My Bookings</button>
+        <TicketModal
+          turf={turf}
+          onClose={pendingBooking.payment_type === 'free' ? handleClosePopupAfterFree : handleCancelPending}
+          footer={
+            pendingBooking.payment_type === 'free' ? (
+              <button className="btn-primary" style={{ width: '100%' }} onClick={handleClosePopupAfterFree}>
+                Go to My Bookings
+              </button>
             ) : (
-              <div className="popup-actions">
+              <>
                 <button className="btn-secondary" onClick={handleCancelPending} disabled={paying}>Cancel</button>
-                <button className="btn-primary" onClick={handlePayNow} disabled={paying}>{paying ? 'Processing…' : 'Pay Now'}</button>
-              </div>
-            )}
-            <p className="subtle small">Payment gateway isn't wired up yet — "Pay Now" simulates payment completion for this MVP.</p>
-          </div>
-        </div>
+                <button className="btn-primary" onClick={handlePayNow} disabled={paying}>
+                  {paying ? 'Processing…' : 'Pay Now'}
+                </button>
+              </>
+            )
+          }
+        >
+          <h2 style={{ marginTop: 0 }}>{pendingBooking.payment_type === 'free' ? 'Booking Confirmed' : 'Confirm Booking'}</h2>
+          <div className="ticket-section-title">Details</div>
+          <div className="ticket-row"><span>Date</span><span>{formatDateNice(pendingBooking.booking_date)}</span></div>
+          <div className="ticket-row"><span>Time</span><span>{pendingBooking.start_time}–{pendingBooking.end_time}</span></div>
+          <div className="ticket-row"><span>Type</span><span>{pendingBooking.booking_type === 'open' ? 'Open booking' : 'Private booking'}</span></div>
+          <div className="ticket-row"><span>Payment</span><span>{pendingBooking.payment_type}</span></div>
+          {pendingBooking.payment_type !== 'free' && (
+            <div className="ticket-row highlight money"><span>Amount due</span><span>₹{pendingBooking.amount_due}</span></div>
+          )}
+          {pendingBooking.payment_type !== 'free' && (
+            <p className="subtle small" style={{ marginTop: 10 }}>
+              Disclaimer: cancelling after payment deducts a {turf.cancellation_fee_pct}% fee. Payment gateway isn't
+              wired up yet for this MVP — "Pay Now" simulates payment completion.
+            </p>
+          )}
+          {payError && <div className="error-text">{payError}</div>}
+        </TicketModal>
       )}
 
       {joiningBooking && (
-        <div className="popup-overlay">
-          <div className="popup-card">
-            <h2>Join this game?</h2>
-            <div className="popup-summary">
-              <p><strong>{turf.name}</strong></p>
-              <p className="subtle">{turf.city}</p>
-              <p>{joiningBooking.booking_date} · {joiningBooking.start_time}–{joiningBooking.end_time}</p>
-              <p className="subtle small">{joiningBooking.joined_count}/{joiningBooking.max_players} players joined</p>
-              <p className="subtle small">Joining is free — only the person who created this open booking pays.</p>
-            </div>
-            {joinError && <div className="error-text">{joinError}</div>}
-            <div className="popup-actions">
+        <TicketModal
+          turf={turf}
+          onClose={() => setJoiningBooking(null)}
+          footer={
+            <>
               <button className="btn-secondary" onClick={() => setJoiningBooking(null)} disabled={joinSubmitting}>Cancel</button>
               <button className="btn-primary" onClick={confirmJoin} disabled={joinSubmitting}>
                 {joinSubmitting ? 'Joining…' : 'Confirm & Join'}
               </button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        >
+          <h2 style={{ marginTop: 0 }}>Join This Game?</h2>
+          <div className="ticket-section-title">Details</div>
+          <div className="ticket-row"><span>Date</span><span>{formatDateNice(joiningBooking.booking_date)}</span></div>
+          <div className="ticket-row"><span>Time</span><span>{joiningBooking.start_time}–{joiningBooking.end_time}</span></div>
+          <div className="ticket-row"><span>Players</span><span>{joiningBooking.joined_count}/{joiningBooking.max_players}</span></div>
+          {joinError && <div className="error-text">{joinError}</div>}
+          <p className="subtle small" style={{ marginTop: 10 }}>
+            Disclaimer: joining is free — only the person who created this open booking pays.
+          </p>
+        </TicketModal>
       )}
     </div>
   );

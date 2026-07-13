@@ -2,6 +2,13 @@ import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import TicketModal from '../components/TicketModal';
+
+function formatDateNice(iso) {
+  if (!iso) return '';
+  const d = new Date(`${iso}T00:00:00`);
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
 
 export default function OpenBookings() {
   const [city, setCity] = useState('');
@@ -97,25 +104,30 @@ export default function OpenBookings() {
       </div>
 
       {joiningBooking && (
-        <div className="popup-overlay">
-          <div className="popup-card">
-            <h2>Join this game?</h2>
-            <div className="popup-summary">
-              <p><strong>{joiningBooking.turf_name}</strong></p>
-              <p className="subtle">{joiningBooking.turf_city}</p>
-              <p>{joiningBooking.booking_date} · {joiningBooking.start_time}–{joiningBooking.end_time}</p>
-              <p className="subtle small">{joiningBooking.joined_count}/{joiningBooking.max_players} players joined</p>
-              <p className="subtle small">Joining is free — only the person who created this open booking pays.</p>
-            </div>
-            {joinError && <div className="error-text">{joinError}</div>}
-            <div className="popup-actions">
+        <TicketModal
+          turf={{
+            name: joiningBooking.turf_name, city: joiningBooking.turf_city, address: joiningBooking.address,
+          }}
+          onClose={() => setJoiningBooking(null)}
+          footer={
+            <>
               <button className="btn-secondary" onClick={() => setJoiningBooking(null)} disabled={joinSubmitting}>Cancel</button>
               <button className="btn-primary" onClick={confirmJoin} disabled={joinSubmitting}>
                 {joinSubmitting ? 'Joining…' : 'Confirm & Join'}
               </button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        >
+          <h2 style={{ marginTop: 0 }}>Join This Game?</h2>
+          <div className="ticket-section-title">Details</div>
+          <div className="ticket-row"><span>Date</span><span>{formatDateNice(joiningBooking.booking_date)}</span></div>
+          <div className="ticket-row"><span>Time</span><span>{joiningBooking.start_time}–{joiningBooking.end_time}</span></div>
+          <div className="ticket-row"><span>Players</span><span>{joiningBooking.joined_count}/{joiningBooking.max_players}</span></div>
+          {joinError && <div className="error-text">{joinError}</div>}
+          <p className="subtle small" style={{ marginTop: 10 }}>
+            Disclaimer: joining is free — only the person who created this open booking pays.
+          </p>
+        </TicketModal>
       )}
     </div>
   );

@@ -1,9 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { SPORT_OPTIONS, PLAYER_ICON } from '../constants';
+import TicketModal from '../components/TicketModal';
+
+function formatDateNice(iso) {
+  if (!iso) return '';
+  const d = new Date(`${iso}T00:00:00`);
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
 
 const emptyTurf = {
-  name: '', city: '', address: '', sport_type: '', rate_per_hour: '', old_price: '',
+  name: '', city: '', address: '', sport_type: SPORT_OPTIONS[0], rate_per_hour: '', old_price: '',
   open_time: '06:00', close_time: '23:00', description: '',
   allow_free_booking: false, allow_partial_booking: false, partial_token_pct: 15,
   cover_image: '', gallery: [],
@@ -36,6 +44,8 @@ export default function OwnerDashboard() {
   const [uploadError, setUploadError] = useState('');
   const coverInputRef = useRef(null);
   const galleryInputRef = useRef(null);
+
+  const [detailBooking, setDetailBooking] = useState(null);
 
   async function loadAll() {
     const [turfsRes, calRes, statsRes] = await Promise.all([
@@ -194,7 +204,11 @@ export default function OwnerDashboard() {
             <label>Name<input required value={form.name} onChange={(e) => update('name', e.target.value)} /></label>
             <label>City<input required value={form.city} onChange={(e) => update('city', e.target.value)} /></label>
             <label>Address<input value={form.address} onChange={(e) => update('address', e.target.value)} /></label>
-            <label>Sport type<input required value={form.sport_type} onChange={(e) => update('sport_type', e.target.value)} /></label>
+            <label>Sport type
+              <select required value={form.sport_type} onChange={(e) => update('sport_type', e.target.value)}>
+                {SPORT_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </label>
 
             <div className="time-row">
               <label>Rate per hour (₹)<input required type="number" value={form.rate_per_hour} onChange={(e) => update('rate_per_hour', e.target.value)} /></label>
@@ -325,16 +339,20 @@ export default function OwnerDashboard() {
         ) : (
           <ul className="booking-list">
             {calendar.map((b) => (
-              <li key={b.id} className="booking-row">
+              <li key={b.id} className="booking-row booking-row-clickable" onClick={() => setDetailBooking(b)}>
                 <div>
                   <strong>{b.turf_name}</strong> · {b.booking_date} · {b.start_time}–{b.end_time}
                   <div className="subtle small">
-                    {b.booking_type === 'open' ? `Open (${b.joined_count}/${b.max_players})` : 'Private'} ·
-                    {' '}booked by {b.created_by_name} · status: {b.status}
+                    {b.booking_type === 'open' ? `Open (${b.joined_count}/${b.max_players})` : 'Private'} ·{' '}
+                    booked by {PLAYER_ICON} {b.created_by_name} ·{' '}
+                    <span className={`status-badge ${b.status}`}>{b.status.replace('_', ' ')}</span>
                   </div>
                 </div>
                 {b.status === 'confirmed' && (
-                  <button className="btn-secondary small" onClick={() => handleNoShow(b.id)}>
+                  <button
+                    className="btn-secondary small"
+                    onClick={(e) => { e.stopPropagation(); handleNoShow(b.id); }}
+                  >
                     Flag no-show
                   </button>
                 )}
@@ -343,6 +361,48 @@ export default function OwnerDashboard() {
           </ul>
         )}
       </div>
+
+      {detailBooking && (
+        <TicketModal
+          turf={{
+            id: detailBooking.turf_id, name: detailBooking.turf_name, city: detailBooking.turf_city,
+            address: detailBooking.turf_address, cover_image: detailBooking.turf_cover_image,
+          }}
+          onClose={() => setDetailBooking(null)}
+        >
+          <h2 style={{ marginTop: 0 }}>Booking Ticket</h2>
+          <div className="ticket-section-title">Details</div>
+          <div className="ticket-row"><span>Date</span><span>{formatDateNice(detailBooking.booking_date)}</span></div>
+          <div className="ticket-row"><span>Time</span><span>{detailBooking.start_time}–{detailBooking.end_time}</span></div>
+          <div className="ticket-row"><span>Type</span><span>{detailBooking.booking_type === 'open' ? 'Open booking' : 'Private booking'}</span></div>
+          {detailBooking.booking_type === 'open' && (
+            <div className="ticket-row"><span>Players</span><span>{detailBooking.joined_count}/{detailBooking.max_players}</span></div>
+          )}
+          <div className="ticket-row"><span>Status</span><span className={`status-badge ${detailBooking.status}`}>{detailBooking.status.replace('_', ' ')}</span></div>
+
+          <div className="ticket-section-title">Booked by</div>
+          <div className="ticket-person-badge">
+            <span>{PLAYER_ICON}</span>
+            <div>
+              <div style={{ fontWeight: 700 }}>{detailBooking.created_by_name}</div>
+              <div className="subtle small">{detailBooking.created_by_email}</div>
+            </div>
+          </div>
+
+          <div className="ticket-section-title">Payment</div>
+          <div className="ticket-row"><span>Payment type</span><span>{detailBooking.payment_type}</span></div>
+          <div className="ticket-row"><span>Total amount</span><span>₹{detailBooking.amount_total}</span></div>
+          {detailBooking.payment_type !== 'free' && (
+            <div className="ticket-row highlight money"><span>Amount due</span><span>₹{detailBooking.amount_due}</span></div>
+          )}
+          {detailBooking.amount_paid > 0 && (
+            <div className="ticket-row highlight"><span>Amount paid</span><span>₹{detailBooking.amount_paid}</span></div>
+          )}
+          {detailBooking.status === 'cancelled' && detailBooking.refund_amount != null && (
+            <div className="ticket-row highlight"><span>Refund</span><span>₹{detailBooking.refund_amount}</span></div>
+          )}
+        </TicketModal>
+      )}
     </div>
   );
 }

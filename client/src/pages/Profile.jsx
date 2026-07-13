@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { PLAYER_ICON, TURF_ICON } from '../constants';
 
 export default function Profile() {
   const { user, token, updateUser } = useAuth();
@@ -34,7 +35,7 @@ export default function Profile() {
 
   return (
     <div className="page">
-      <h1>Your profile</h1>
+      <h1>{user.role === 'owner' ? TURF_ICON : PLAYER_ICON} Your profile</h1>
       <div className="card">
         <form className="form" onSubmit={handleSave}>
           <label>

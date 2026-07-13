@@ -8,6 +8,7 @@ const usersRouter = require('./routes/users');
 const turfsRouter = require('./routes/turfs');
 const bookingsRouter = require('./routes/bookings');
 const { router: uploadsRouter, uploadsDir } = require('./routes/uploads');
+const { router: notificationsRouter } = require('./routes/notifications');
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use('/api/users', usersRouter);
 app.use('/api/turfs', turfsRouter);
 app.use('/api/bookings', bookingsRouter);
 app.use('/api/uploads', uploadsRouter);
+app.use('/api/notifications', notificationsRouter);
 
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 
