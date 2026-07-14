@@ -1,0 +1,18 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect x="56" y="56" width="400" height="400" rx="96" fill="#5cc652"/>
+
+  <!-- Icon -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="48" stroke-linecap="round" stroke-linejoin="round">
+
+    <!-- Top bar -->
+    <path d="M156 176H356"/>
+
+    <!-- Vertical -->
+    <path d="M256 176V336"/>
+
+    <!-- Space cut -->
+    <path d="M304 240L356 292"/>
+
+  </g>
+</svg>

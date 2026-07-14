@@ -16,8 +16,6 @@ export default function TicketModal({ onClose, turf, children, footer }) {
         </div>
 
         <div className="ticket-divider">
-          <span className="ticket-notch ticket-notch-top" />
-          <span className="ticket-notch ticket-notch-bottom" />
         </div>
 
         <div className="ticket-right">

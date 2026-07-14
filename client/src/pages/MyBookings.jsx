@@ -40,10 +40,10 @@ function BookingRow({ b, onCancel, onPay, onLeave, payingId, leavingId, onOpenDe
           </button>
         )}
         {onCancel && b.status !== 'cancelled' && (
-          <button className="btn-secondary small" onClick={() => onCancel(b.id)}>Cancel</button>
+          <button className="btn-secondary small" onClick={() => onCancel(b.id,isJoined)}>Cancel</button>
         )}
         {onLeave && b.status !== 'cancelled' && (
-          <button className="btn-secondary small" onClick={() => onLeave(b.id)} disabled={leavingId === b.id}>
+          <button className="btn-secondary small" onClick={() => onLeave(b.id,isJoined)} disabled={leavingId === b.id}>
             {leavingId === b.id ? 'Leaving…' : 'Leave game'}
           </button>
         )}
@@ -81,8 +81,11 @@ export default function MyBookings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function handleCancel(id) {
-    if (!window.confirm('Are you sure you want to cancel this booking?')) return;
+  async function handleCancel(id, isJoined) {
+    let msgString = 'Are you sure you want to leave this open-booking?';
+    if (!isJoined)
+      msgString = 'Are you sure you want to cancel this booking? Cancellation fee of 15% will be applied if the booking is cancelled.';
+    if (!window.confirm(msgString)) return;
     try {
       await api.cancelBooking(id, token);
       load();

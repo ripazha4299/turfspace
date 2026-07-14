@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { PLAYER_ICON, TURF_ICON } from '../constants';
 import NotificationBell from './NotificationBell';
+import turfSpaceIcon from "../assets/icons/turfSpaceIcon.svg";
 
 export default function NavBar() {
   const { user, logout } = useAuth();
@@ -26,7 +27,14 @@ export default function NavBar() {
   return (
     <header className="navbar">
       <div className="navbar-inner">
-        <Link to="/" className="brand" onClick={closeMenu}>TurfSpace</Link>
+        <Link to="/" className="brand" onClick={closeMenu}>
+          <img
+            src={turfSpaceIcon}
+            alt="TurfSpace"
+            className="brand-logo"
+          />
+          <span>TurfSpace</span>
+        </Link>
 
         <button
           className="hamburger-btn"

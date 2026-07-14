@@ -158,12 +158,6 @@ export default function TurfDetail() {
         <div className="pdp-topbar-context">
           <span className="pdp-topbar-pill">{(turf.sports || []).join(' · ')}</span>
           <span className="pdp-topbar-pill">{turf.city}</span>
-          <input
-            type="date"
-            className="pdp-topbar-date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
         </div>
       </div>
 
@@ -222,7 +216,17 @@ export default function TurfDetail() {
                   <button type="button" className={bookingType === 'open' ? 'toggle-btn active' : 'toggle-btn'} onClick={() => setBookingType('open')}>Open — let others join</button>
                 </div>
               </label>
-
+              <div className="pdp-topbar">
+                <div className="pdp-topbar-context">
+                  <label>Date</label>
+                  <input
+                    type="date"
+                    className="pdp-topbar-date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                  />
+                </div>
+              </div>
               <div className="time-row">
                 <TimeSlotPicker label="Start time" value={startTime} onChange={setStartTime} />
                 <TimeSlotPicker label="End time" value={endTime} onChange={setEndTime} />

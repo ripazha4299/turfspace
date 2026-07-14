@@ -6,18 +6,29 @@ import { SPORT_OPTIONS } from '../constants';
 function TurfCard({ turf }) {
   const images = turf.cover_image ? [turf.cover_image, ...(turf.gallery || [])] : (turf.gallery || []);
   const [activeImg, setActiveImg] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
 
-  // Auto-rotates the cover carousel every 1.5s while the card is visible on the page.
+  // Auto-rotates the cover carousel every 1s while the card is hovered over.
   useEffect(() => {
-    if (images.length <= 1) return;
+    if (!isHovered || images.length <= 1) return;
+
     const interval = setInterval(() => {
       setActiveImg((i) => (i + 1) % images.length);
-    }, 1500);
+    }, 1000);
+
     return () => clearInterval(interval);
-  }, [images.length]);
+  }, [isHovered, images.length]);
 
   return (
-    <Link to={`/turfs/${turf.id}`} className="card turf-card">
+    <Link
+      to={`/turfs/${turf.id}`}
+      className="card turf-card"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setActiveImg(0); // optional: return to cover image
+      }}
+    >
       <div className="turf-card-image-wrap">
         {images.length > 0 ? (
           <img src={images[activeImg]} alt={turf.name} onError={(e) => { e.target.style.display = 'none'; }} />

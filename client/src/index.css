@@ -25,7 +25,7 @@
 }
 
 [data-theme="dark"] {
-  --green-900: #0a1d13;
+  --green-900: #345544;
   --green-700: #35b378;
   --green-600: #3fcb89;
   --green-100: #163326;
@@ -186,6 +186,9 @@ a { text-decoration: none; color: inherit; }
   flex-direction: column;
   gap: 14px;
   max-width: 480px;
+  .pdp-topbar {
+    justify-content: center;
+  }
 }
 .form label {
   display: flex;
@@ -202,6 +205,9 @@ a { text-decoration: none; color: inherit; }
   font-size: 0.95rem;
   font-weight: 400;
   background: var(--surface);
+  &&.pdp-topbar-date {
+    background: unset;
+  }
 }
 .form textarea { min-height: 70px; resize: vertical; }
 
@@ -321,7 +327,7 @@ a { text-decoration: none; color: inherit; }
 .ticket-divider {
   position: relative;
   width: 0;
-  border-left: 2px dashed var(--border);
+  border-left: 4px dashed var(--border);
   flex-shrink: 0;
 }
 .ticket-notch {
@@ -584,7 +590,7 @@ a { text-decoration: none; color: inherit; }
 
 .plp-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 18px;
 }
 @media (max-width: 1100px) {
@@ -910,3 +916,16 @@ a { text-decoration: none; color: inherit; }
   cursor: pointer;
 }
 .theme-toggle-btn:hover { background: rgba(255,255,255,0.22); }
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-decoration: none;
+}
+
+.brand-logo {
+  width: 36px;
+  height: 36px;
+  display: block;
+}
