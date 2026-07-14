@@ -37,7 +37,7 @@ export default function NavBar() {
         </Link>
 
         <button
-          className="hamburger-btn"
+          className={menuOpen ? 'hamburger-btn open' : 'hamburger-btn'}
           aria-label="Toggle menu"
           onClick={() => setMenuOpen((m) => !m)}
         >
@@ -53,7 +53,7 @@ export default function NavBar() {
           {user && user.role === 'player' && <Link to="/my-bookings" onClick={closeMenu}>My Bookings</Link>}
           {user && user.role === 'owner' && <Link to="/owner" onClick={closeMenu}>Owner Dashboard</Link>}
           <button className="theme-toggle-btn" onClick={toggleTheme} aria-label="Toggle dark mode">
-            {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
+            {theme === 'dark' ? '☀️' : '🌙'}
           </button>
           {user ? (
             <>

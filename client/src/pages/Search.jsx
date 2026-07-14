@@ -41,16 +41,18 @@ function TurfCard({ turf }) {
           </div>
         )}
       </div>
-      <h3>{turf.name}</h3>
-      <p className="subtle">{turf.city}</p>
-      <div className="chip-row">
-        {(turf.sports || []).map((s) => <span className="chip" key={s}>{s}</span>)}
+      <div className="turf-card-content">
+        <h3>{turf.name}</h3>
+        <p className="subtle">{turf.city}</p>
+        <div className="chip-row">
+          {(turf.sports || []).map((s) => <span className="chip" key={s}>{s}</span>)}
+        </div>
+        <p className="subtle small">Open {turf.open_time} – {turf.close_time}</p>
+        <p className="price">
+          {turf.old_price ? <span className="old-price">₹{turf.old_price}</span> : null}
+          <span className="new-price">₹{turf.rate_per_hour}<small>/hr</small></span>
+        </p>
       </div>
-      <p className="subtle small">Open {turf.open_time} – {turf.close_time}</p>
-      <p className="price">
-        {turf.old_price ? <span className="old-price">₹{turf.old_price}</span> : null}
-        ₹{turf.rate_per_hour}/hr
-      </p>
     </Link>
   );
 }
