@@ -19,7 +19,7 @@ function BookingRow({ b, onCancel, onPay, onLeave, payingId, leavingId, onOpenDe
   return (
     <li className="booking-row booking-row-clickable" onClick={() => onOpenDetail(b)}>
       <div>
-        <strong>{b.turf_name}</strong> · {b.turf_city} · {b.sport_type}
+        <strong>{b.turf_name}</strong> · {b.turf_city} · {(b.turf_sports || []).join(', ')}
         <div className="subtle small">
           {b.booking_date} · {b.start_time}–{b.end_time} ·{' '}
           {b.booking_type === 'open' ? 'Open booking' : 'Private booking'} ·{' '}
@@ -82,6 +82,7 @@ export default function MyBookings() {
   }, []);
 
   async function handleCancel(id) {
+    if (!window.confirm('Are you sure you want to cancel this booking?')) return;
     try {
       await api.cancelBooking(id, token);
       load();
@@ -104,6 +105,7 @@ export default function MyBookings() {
   }
 
   async function handleLeave(id) {
+    if (!window.confirm('Are you sure you want to leave this game?')) return;
     setLeavingId(id);
     setError('');
     try {

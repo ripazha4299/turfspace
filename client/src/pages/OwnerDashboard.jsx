@@ -11,7 +11,7 @@ function formatDateNice(iso) {
 }
 
 const emptyTurf = {
-  name: '', city: '', address: '', sport_type: SPORT_OPTIONS[0], rate_per_hour: '', old_price: '',
+  name: '', city: '', address: '', sports: [], rate_per_hour: '', old_price: '',
   open_time: '06:00', close_time: '23:00', description: '',
   allow_free_booking: false, allow_partial_booking: false, partial_token_pct: 15,
   cover_image: '', gallery: [],
@@ -19,7 +19,7 @@ const emptyTurf = {
 
 function turfToFormState(t) {
   return {
-    name: t.name, city: t.city, address: t.address || '', sport_type: t.sport_type,
+    name: t.name, city: t.city, address: t.address || '', sports: t.sports || [],
     rate_per_hour: String(t.rate_per_hour), old_price: t.old_price != null ? String(t.old_price) : '',
     open_time: t.open_time, close_time: t.close_time, description: t.description || '',
     allow_free_booking: !!t.allow_free_booking, allow_partial_booking: !!t.allow_partial_booking,
@@ -69,6 +69,13 @@ export default function OwnerDashboard() {
 
   function toggle(field) {
     setForm((f) => ({ ...f, [field]: !f[field] }));
+  }
+
+  function toggleSport(sport) {
+    setForm((f) => ({
+      ...f,
+      sports: f.sports.includes(sport) ? f.sports.filter((s) => s !== sport) : [...f.sports, sport],
+    }));
   }
 
   function openCreateForm() {
@@ -130,6 +137,10 @@ export default function OwnerDashboard() {
   async function handleSaveTurf(e) {
     e.preventDefault();
     setError('');
+    if (form.sports.length === 0) {
+      setError('Select at least one sport.');
+      return;
+    }
     setSaving(true);
     const payload = {
       ...form,
@@ -199,109 +210,125 @@ export default function OwnerDashboard() {
         </div>
 
         {showForm && (
-          <form className="form" onSubmit={handleSaveTurf}>
+          <form className="form owner-dashboard-form" onSubmit={handleSaveTurf}>
             <h3 style={{ margin: '0 0 4px' }}>{editingTurfId ? 'Edit turf' : 'New turf'}</h3>
-            <label>Name<input required value={form.name} onChange={(e) => update('name', e.target.value)} /></label>
-            <label>City<input required value={form.city} onChange={(e) => update('city', e.target.value)} /></label>
-            <label>Address<input value={form.address} onChange={(e) => update('address', e.target.value)} /></label>
-            <label>Sport type
-              <select required value={form.sport_type} onChange={(e) => update('sport_type', e.target.value)}>
-                {SPORT_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </label>
-
-            <div className="time-row">
-              <label>Rate per hour (₹)<input required type="number" value={form.rate_per_hour} onChange={(e) => update('rate_per_hour', e.target.value)} /></label>
-              <label>
-                Old price (₹, optional)
-                <input type="number" value={form.old_price} onChange={(e) => update('old_price', e.target.value)} />
-              </label>
-            </div>
-            <p className="subtle small">
-              Set an old price to show a strikethrough discount on listings.
-              {editingTurfId ? ' Changing the rate here never affects bookings already made — those keep their original price.' : ''}
-            </p>
-
-            <div className="time-row">
-              <label>Open time<input type="time" value={form.open_time} onChange={(e) => update('open_time', e.target.value)} /></label>
-              <label>Close time<input type="time" value={form.close_time} onChange={(e) => update('close_time', e.target.value)} /></label>
-            </div>
-            <label>Description<textarea value={form.description} onChange={(e) => update('description', e.target.value)} /></label>
-
-            <label>
-              Cover image
-              <input type="file" accept="image/*" ref={coverInputRef} onChange={handleCoverFileChange} disabled={uploadingCover} />
-            </label>
-            {uploadingCover && <p className="subtle small">Uploading…</p>}
-            {form.cover_image && (
-              <div style={{ position: 'relative', width: 120 }}>
-                <img src={form.cover_image} alt="Cover preview" style={{ width: 120, height: 90, objectFit: 'cover', borderRadius: 8 }} />
-                <button
-                  type="button"
-                  className="btn-secondary small"
-                  style={{ marginTop: 6 }}
-                  onClick={() => update('cover_image', '')}
-                >
-                  Remove
-                </button>
-              </div>
-            )}
-
-            <label>
-              Gallery images (you can select multiple, or add more to existing ones)
-              <input type="file" accept="image/*" multiple ref={galleryInputRef} onChange={handleGalleryFilesChange} disabled={uploadingGallery} />
-            </label>
-            {uploadingGallery && <p className="subtle small">Uploading…</p>}
-            {form.gallery.length > 0 && (
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {form.gallery.map((url) => (
-                  <div key={url} style={{ position: 'relative' }}>
-                    <img src={url} alt="Gallery preview" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 6 }} />
-                    <button
-                      type="button"
-                      onClick={() => removeGalleryImage(url)}
-                      style={{
-                        position: 'absolute', top: -6, right: -6, background: 'var(--alert-red)', color: 'white',
-                        border: 'none', borderRadius: '50%', width: 20, height: 20, cursor: 'pointer', fontSize: 12, lineHeight: '20px', padding: 0,
-                      }}
-                      aria-label="Remove image"
-                    >
-                      ×
-                    </button>
+            <div className="form-main-with-aside">
+              <div className="form-main">
+                <label>Name<input required value={form.name} onChange={(e) => update('name', e.target.value)} /></label>
+                <label>City<input required value={form.city} onChange={(e) => update('city', e.target.value)} /></label>
+                <label>Address<input value={form.address} onChange={(e) => update('address', e.target.value)} /></label>
+                <div>
+                  <label style={{ marginBottom: 6, display: 'block' }}>Sports (select one or more)</label>
+                  <div className="filter-option-row">
+                    {SPORT_OPTIONS.map((sport) => (
+                      <label className="filter-option" key={sport}>
+                        <input type="checkbox" checked={form.sports.includes(sport)} onChange={() => toggleSport(sport)} />
+                        {sport}
+                      </label>
+                    ))}
                   </div>
-                ))}
+                  {form.sports.length === 0 && <p className="error-text small" style={{ marginTop: 4 }}>Select at least one sport.</p>}
+                </div>
+
+                <div className="time-row break-new">
+                  <label>Rate per hour (₹)<input required type="number" value={form.rate_per_hour} onChange={(e) => update('rate_per_hour', e.target.value)} /></label>
+                  <label>
+                    Old price (₹, optional)
+                    <input type="number" value={form.old_price} onChange={(e) => update('old_price', e.target.value)} />
+                  </label>
+                </div>
+                <p className="subtle small">
+                  Set an old price to show a strikethrough discount on listings.
+                  {editingTurfId ? ' Changing the rate here never affects bookings already made — those keep their original price.' : ''}
+                </p>
+
+                <div className="time-row">
+                  <label>Open time<input type="time" value={form.open_time} onChange={(e) => update('open_time', e.target.value)} /></label>
+                  <label>Close time<input type="time" value={form.close_time} onChange={(e) => update('close_time', e.target.value)} /></label>
+                </div>
+
+                <label>Description<textarea value={form.description} onChange={(e) => update('description', e.target.value)} /></label>
+
+                <label style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <input type="checkbox" checked={form.allow_free_booking} onChange={() => toggle('allow_free_booking')} />
+                  Allow free bookings
+                </label>
+                <label style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <input type="checkbox" checked={form.allow_partial_booking} onChange={() => toggle('allow_partial_booking')} />
+                  Allow partial (token) bookings
+                </label>
+                {form.allow_partial_booking && (
+                  <label>
+                    Partial token % (min 15)
+                    <input
+                      type="number"
+                      min={15}
+                      max={100}
+                      value={form.partial_token_pct}
+                      onChange={(e) => update('partial_token_pct', e.target.value)}
+                    />
+                  </label>
+                )}
+                <p className="subtle small">Full payment is always offered as an option, in addition to whatever you enable above.</p>
+
+                {error && <div className="error-text">{error}</div>}
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <button className="btn-primary" disabled={saving || uploadingCover || uploadingGallery} type="submit">
+                    {saving ? 'Saving…' : editingTurfId ? 'Save changes' : 'Save turf'}
+                  </button>
+                  <button type="button" className="btn-secondary" onClick={closeForm}>Cancel</button>
+                </div>
               </div>
-            )}
-            {uploadError && <div className="error-text">{uploadError}</div>}
 
-            <label style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <input type="checkbox" checked={form.allow_free_booking} onChange={() => toggle('allow_free_booking')} />
-              Allow free bookings
-            </label>
-            <label style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <input type="checkbox" checked={form.allow_partial_booking} onChange={() => toggle('allow_partial_booking')} />
-              Allow partial (token) bookings
-            </label>
-            {form.allow_partial_booking && (
-              <label>
-                Partial token % (min 15)
-                <input
-                  type="number"
-                  min={15}
-                  max={100}
-                  value={form.partial_token_pct}
-                  onChange={(e) => update('partial_token_pct', e.target.value)}
-                />
-              </label>
-            )}
-            <p className="subtle small">Full payment is always offered as an option, in addition to whatever you enable above.</p>
+              <aside className="form-aside">
+                <div className="image-upload-panel">
+                  <label>
+                    Cover image
+                    <input type="file" accept="image/*" ref={coverInputRef} onChange={handleCoverFileChange} disabled={uploadingCover} />
+                  </label>
+                  {uploadingCover && <p className="subtle small">Uploading…</p>}
+                  {form.cover_image && (
+                    <div className="image-preview-card" style={{ position: 'relative', width: 120 }}>
+                      <img src={form.cover_image} alt="Cover preview" style={{ width: 120, height: 90, objectFit: 'cover', borderRadius: 8 }} />
+                      <button
+                        type="button"
+                        className="btn-secondary small"
+                        style={{ marginTop: 6 }}
+                        onClick={() => update('cover_image', '')}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
 
-            {error && <div className="error-text">{error}</div>}
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button className="btn-primary" disabled={saving || uploadingCover || uploadingGallery} type="submit">
-                {saving ? 'Saving…' : editingTurfId ? 'Save changes' : 'Save turf'}
-              </button>
-              <button type="button" className="btn-secondary" onClick={closeForm}>Cancel</button>
+                  <label>
+                    Gallery images (you can select multiple, or add more to existing ones)
+                    <input type="file" accept="image/*" multiple ref={galleryInputRef} onChange={handleGalleryFilesChange} disabled={uploadingGallery} />
+                  </label>
+                  {uploadingGallery && <p className="subtle small">Uploading…</p>}
+                  {form.gallery.length > 0 && (
+                    <div className="gallery-preview-grid">
+                      {form.gallery.map((url) => (
+                        <div key={url} style={{ position: 'relative' }}>
+                          <img src={url} alt="Gallery preview" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 6 }} />
+                          <button
+                            type="button"
+                            onClick={() => removeGalleryImage(url)}
+                            style={{
+                              position: 'absolute', top: -6, right: -6, background: 'var(--alert-red)', color: 'white',
+                              border: 'none', borderRadius: '50%', width: 20, height: 20, cursor: 'pointer', fontSize: 12, lineHeight: '20px', padding: 0,
+                            }}
+                            aria-label="Remove image"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {uploadError && <div className="error-text">{uploadError}</div>}
+                </div>
+              </aside>
             </div>
           </form>
         )}
@@ -319,7 +346,7 @@ export default function OwnerDashboard() {
                     <div style={{ width: 56, height: 56, borderRadius: 6, background: 'var(--sand-100)' }} />
                   )}
                   <div>
-                    <strong>{t.name}</strong> · {t.city} · {t.sport_type} · ₹{t.rate_per_hour}/hr
+                    <strong>{t.name}</strong> · {t.city} · {(t.sports || []).join(', ')} · ₹{t.rate_per_hour}/hr
                     {t.gallery && t.gallery.length > 0 && (
                       <div className="subtle small">{t.gallery.length + (t.cover_image ? 1 : 0)} photo(s)</div>
                     )}

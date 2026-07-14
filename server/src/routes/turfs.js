@@ -5,42 +5,55 @@ const { requireAuth, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Turfs are stored with `gallery` as a JSON string column; every response
-// parses it back into an array so the frontend never touches raw JSON text.
+const SPORT_OPTIONS = ['Football', 'Cricket', 'Badminton', 'Tennis', 'Basketball'];
+
+// Turfs are stored with `gallery` and `sports` as JSON string columns; every
+// response parses them back into arrays so the frontend never touches raw JSON text.
 function serializeTurf(turf) {
   if (!turf) return turf;
   let gallery = [];
-  try {
-    gallery = JSON.parse(turf.gallery || '[]');
-  } catch (e) {
-    gallery = [];
-  }
-  return { ...turf, gallery };
+  let sports = [];
+  try { gallery = JSON.parse(turf.gallery || '[]'); } catch (e) { gallery = []; }
+  try { sports = JSON.parse(turf.sports || '[]'); } catch (e) { sports = []; }
+  return { ...turf, gallery, sports };
 }
 
-// GET /api/turfs?city=&sport_type=&sort=price_asc|price_desc -- Epic 1: Search & Discovery (P0/P1)
-// Also powers the PLP (Product Listing Page): price sort, sport filtering.
+// Normalizes sports input (array or comma-separated string) into a JSON string,
+// restricted to the fixed SPORT_OPTIONS list so a turf can never claim a sport
+// that doesn't exist anywhere in the PLP's filter sidebar.
+function serializeSportsInput(sports) {
+  const arr = Array.isArray(sports)
+    ? sports
+    : String(sports || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const valid = arr.filter((s) => SPORT_OPTIONS.includes(s));
+  return { json: JSON.stringify(valid), valid };
+}
+
+// GET /api/turfs?city=&sports=&sort=price_asc|price_desc -- Epic 1: Search & Discovery (P0/P1)
+// Also powers the PLP (Product Listing Page): price sort, multi-sport filtering.
+// Sport filtering happens in JS after the DB fetch since `sports` is stored as a
+// JSON array column -- fine at this dataset scale, and avoids SQLite JSON1 dependency.
 router.get('/', (req, res) => {
-  const { city, sport_type, sort } = req.query;
+  const { city, sports, sort } = req.query;
   let query = 'SELECT * FROM turfs WHERE 1=1';
   const params = [];
   if (city) {
     query += ' AND city LIKE ?';
     params.push(`%${city}%`);
   }
-  if (sport_type) {
-    // Supports a comma-separated list for the PLP's multi-select sport filter.
-    const sports = sport_type.split(',').map((s) => s.trim()).filter(Boolean);
-    if (sports.length > 0) {
-      query += ` AND sport_type IN (${sports.map(() => '?').join(',')})`;
-      params.push(...sports);
-    }
-  }
   if (sort === 'price_asc') query += ' ORDER BY rate_per_hour ASC';
   else if (sort === 'price_desc') query += ' ORDER BY rate_per_hour DESC';
   else query += ' ORDER BY created_at DESC';
 
-  const turfs = db.prepare(query).all(...params).map(serializeTurf);
+  let turfs = db.prepare(query).all(...params).map(serializeTurf);
+
+  if (sports) {
+    const wanted = sports.split(',').map((s) => s.trim()).filter(Boolean);
+    if (wanted.length > 0) {
+      turfs = turfs.filter((t) => t.sports.some((s) => wanted.includes(s)));
+    }
+  }
+
   res.json({ turfs });
 });
 
@@ -97,11 +110,16 @@ function serializeGalleryInput(gallery) {
 // POST /api/turfs -- owner registers a venue (P0, Manual-Ops Owner / Underbooked Owner)
 router.post('/', requireAuth, requireRole('owner'), (req, res) => {
   const {
-    name, city, address, sport_type, rate_per_hour, open_time, close_time, description,
+    name, city, address, sports, rate_per_hour, open_time, close_time, description,
     cover_image, gallery, old_price,
   } = req.body;
-  if (!name || !city || !sport_type || rate_per_hour == null) {
-    return res.status(400).json({ error: 'name, city, sport_type, rate_per_hour are required' });
+  if (!name || !city || rate_per_hour == null) {
+    return res.status(400).json({ error: 'name, city, rate_per_hour are required' });
+  }
+
+  const { json: sportsJson, valid: validSports } = serializeSportsInput(sports);
+  if (validSports.length === 0) {
+    return res.status(400).json({ error: `sports must include at least one of: ${SPORT_OPTIONS.join(', ')}` });
   }
 
   const paymentConfig = validatePaymentConfig(req.body);
@@ -110,13 +128,13 @@ router.post('/', requireAuth, requireRole('owner'), (req, res) => {
   const id = uuidv4();
   db.prepare(
     `INSERT INTO turfs (
-       id, owner_id, name, city, address, sport_type, rate_per_hour, open_time, close_time, description,
+       id, owner_id, name, city, address, sports, rate_per_hour, open_time, close_time, description,
        cover_image, gallery, old_price,
        allow_free_booking, allow_partial_booking, partial_token_pct, cancellation_fee_pct
      )
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
-    id, req.user.id, name, city, address || '', sport_type, rate_per_hour,
+    id, req.user.id, name, city, address || '', sportsJson, rate_per_hour,
     open_time || '06:00', close_time || '23:00', description || '',
     cover_image || '', serializeGalleryInput(gallery), old_price != null ? Number(old_price) : null,
     paymentConfig.allow_free_booking, paymentConfig.allow_partial_booking,
@@ -127,7 +145,7 @@ router.post('/', requireAuth, requireRole('owner'), (req, res) => {
   res.status(201).json({ turf: serializeTurf(turf) });
 });
 
-// PUT /api/turfs/:id -- owner updates availability/rates/images (P0)
+// PUT /api/turfs/:id -- owner updates availability/rates/images/sports (P0)
 // Business rule: changing price here never touches already-created bookings --
 // amount_total/amount_due are computed and frozen at booking creation time.
 router.put('/:id', requireAuth, requireRole('owner'), (req, res) => {
@@ -136,9 +154,18 @@ router.put('/:id', requireAuth, requireRole('owner'), (req, res) => {
   if (turf.owner_id !== req.user.id) return res.status(403).json({ error: 'Not your turf' });
 
   const {
-    name, city, address, sport_type, rate_per_hour, open_time, close_time, description,
+    name, city, address, sports, rate_per_hour, open_time, close_time, description,
     cover_image, gallery, old_price,
   } = req.body;
+
+  let sportsJson = turf.sports;
+  if (sports !== undefined) {
+    const result = serializeSportsInput(sports);
+    if (result.valid.length === 0) {
+      return res.status(400).json({ error: `sports must include at least one of: ${SPORT_OPTIONS.join(', ')}` });
+    }
+    sportsJson = result.json;
+  }
 
   const sentPaymentFields =
     req.body.allow_free_booking !== undefined ||
@@ -165,12 +192,12 @@ router.put('/:id', requireAuth, requireRole('owner'), (req, res) => {
   }
 
   db.prepare(
-    `UPDATE turfs SET name=?, city=?, address=?, sport_type=?, rate_per_hour=?, open_time=?, close_time=?, description=?,
+    `UPDATE turfs SET name=?, city=?, address=?, sports=?, rate_per_hour=?, open_time=?, close_time=?, description=?,
        cover_image=?, gallery=?, old_price=?,
        allow_free_booking=?, allow_partial_booking=?, partial_token_pct=?, cancellation_fee_pct=?
      WHERE id = ?`
   ).run(
-    name ?? turf.name, city ?? turf.city, address ?? turf.address, sport_type ?? turf.sport_type,
+    name ?? turf.name, city ?? turf.city, address ?? turf.address, sportsJson,
     rate_per_hour ?? turf.rate_per_hour, open_time ?? turf.open_time, close_time ?? turf.close_time,
     description ?? turf.description,
     cover_image ?? turf.cover_image, gallery !== undefined ? serializeGalleryInput(gallery) : turf.gallery,

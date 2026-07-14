@@ -189,13 +189,13 @@ router.post('/:id/pay', requireAuth, (req, res) => {
   res.json({ booking: updated });
 });
 
-// GET /api/bookings/open?city=&sport_type=&date=&turf_id= -- Epic 3, P0 (Solo Joiner browses open bookings)
+// GET /api/bookings/open?city=&sports=&date=&turf_id= -- Epic 3, P0 (Solo Joiner browses open bookings)
 // turf_id scopes this to a single turf's open bookings -- used by the PDP's
 // "Available Open Bookings" side panel.
 router.get('/open', (req, res) => {
-  const { city, sport_type, date, turf_id } = req.query;
+  const { city, sports, date, turf_id } = req.query;
   let query = `
-    SELECT b.*, t.name as turf_name, t.city as turf_city, t.sport_type, t.address,
+    SELECT b.*, t.name as turf_name, t.city as turf_city, t.sports as turf_sports, t.address,
       (SELECT COUNT(*) FROM booking_participants bp WHERE bp.booking_id = b.id) as joined_count
     FROM bookings b
     JOIN turfs t ON b.turf_id = t.id
@@ -210,17 +210,23 @@ router.get('/open', (req, res) => {
     query += ' AND t.city LIKE ?';
     params.push(`%${city}%`);
   }
-  if (sport_type) {
-    query += ' AND t.sport_type LIKE ?';
-    params.push(`%${sport_type}%`);
-  }
   if (date) {
     query += ' AND b.booking_date = ?';
     params.push(date);
   }
   query += ' ORDER BY b.booking_date ASC, b.start_time ASC';
 
-  const bookings = db.prepare(query).all(...params);
+  let bookings = db.prepare(query).all(...params).map((b) => {
+    let turf_sports = [];
+    try { turf_sports = JSON.parse(b.turf_sports || '[]'); } catch (e) { turf_sports = []; }
+    return { ...b, turf_sports };
+  });
+
+  if (sports) {
+    const wanted = sports.split(',').map((s) => s.trim()).filter(Boolean);
+    if (wanted.length > 0) bookings = bookings.filter((b) => b.turf_sports.some((s) => wanted.includes(s)));
+  }
+
   // Only surface ones that still have room
   const withRoom = bookings.filter((b) => b.joined_count < b.max_players);
   res.json({ bookings: withRoom });
@@ -302,10 +308,11 @@ router.post('/:id/leave', requireAuth, requireRole('player'), (req, res) => {
 // GET /api/bookings/:id -- detail with participants
 router.get('/:id', (req, res) => {
   const booking = db.prepare(
-    `SELECT b.*, t.name as turf_name, t.city as turf_city, t.sport_type, t.address, t.owner_id
+    `SELECT b.*, t.name as turf_name, t.city as turf_city, t.sports as turf_sports, t.address, t.owner_id
      FROM bookings b JOIN turfs t ON b.turf_id = t.id WHERE b.id = ?`
   ).get(req.params.id);
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
+  try { booking.turf_sports = JSON.parse(booking.turf_sports || '[]'); } catch (e) { booking.turf_sports = []; }
 
   const participants = db.prepare(
     `SELECT u.id, u.name FROM booking_participants bp JOIN users u ON bp.user_id = u.id WHERE bp.booking_id = ?`
@@ -380,7 +387,7 @@ router.post('/:id/no-show', requireAuth, requireRole('owner'), (req, res) => {
 router.get('/deals/no-show', (req, res) => {
   const { city, date } = req.query;
   let query = `
-    SELECT b.*, t.name as turf_name, t.city as turf_city, t.sport_type, t.rate_per_hour
+    SELECT b.*, t.name as turf_name, t.city as turf_city, t.sports as turf_sports, t.rate_per_hour
     FROM bookings b JOIN turfs t ON b.turf_id = t.id
     WHERE b.status = 'no_show'
   `;

@@ -117,6 +117,11 @@ export default function TurfDetail() {
     loadOpenForTurf();
   }
 
+  function handleCancelPendingWithConfirm() {
+    if (!window.confirm('Are you sure you want to cancel this booking?')) return;
+    handleCancelPending();
+  }
+
   function handleClosePopupAfterFree() {
     setPendingBooking(null);
     navigate('/my-bookings');
@@ -151,7 +156,7 @@ export default function TurfDetail() {
       <div className="pdp-topbar">
         <button className="pdp-back-btn" onClick={() => navigate(-1)}>← Back</button>
         <div className="pdp-topbar-context">
-          <span className="pdp-topbar-pill">{turf.sport_type}</span>
+          <span className="pdp-topbar-pill">{(turf.sports || []).join(' · ')}</span>
           <span className="pdp-topbar-pill">{turf.city}</span>
           <input
             type="date"
@@ -195,7 +200,7 @@ export default function TurfDetail() {
             </div>
           )}
           <div className="chip-row" style={{ marginTop: 14 }}>
-            <span className="chip">{turf.sport_type}</span>
+            {(turf.sports || []).map((s) => <span className="chip" key={s}>{s}</span>)}
           </div>
           <p className="subtle small">🕒 Open {turf.open_time} – {turf.close_time}</p>
           <p className="price">
@@ -290,7 +295,7 @@ export default function TurfDetail() {
               </button>
             ) : (
               <>
-                <button className="btn-secondary" onClick={handleCancelPending} disabled={paying}>Cancel</button>
+                <button className="btn-secondary" onClick={handleCancelPendingWithConfirm} disabled={paying}>Cancel</button>
                 <button className="btn-primary" onClick={handlePayNow} disabled={paying}>
                   {paying ? 'Processing…' : 'Pay Now'}
                 </button>

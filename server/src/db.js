@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS turfs (
   name TEXT NOT NULL,
   city TEXT NOT NULL,
   address TEXT DEFAULT '',
-  sport_type TEXT NOT NULL,
+  sports TEXT NOT NULL DEFAULT '[]',
   rate_per_hour REAL NOT NULL,
   open_time TEXT DEFAULT '06:00',
   close_time TEXT DEFAULT '23:00',

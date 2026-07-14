@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import TicketModal from '../components/TicketModal';
+import { SPORT_OPTIONS } from '../constants';
 
 function formatDateNice(iso) {
   if (!iso) return '';
@@ -45,7 +46,7 @@ export default function OpenBookings() {
     e.preventDefault();
     const params = {};
     if (city) params.city = city;
-    if (sportType) params.sport_type = sportType;
+    if (sportType) params.sports = sportType;
     runSearch(params);
   }
 
@@ -78,7 +79,10 @@ export default function OpenBookings() {
 
       <form className="search-bar" onSubmit={handleSubmit}>
         <input placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} />
-        <input placeholder="Sport" value={sportType} onChange={(e) => setSportType(e.target.value)} />
+        <select value={sportType} onChange={(e) => setSportType(e.target.value)}>
+          <option value="">Any sport</option>
+          {SPORT_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
         <button className="btn-primary" type="submit">Search</button>
       </form>
 
@@ -93,7 +97,9 @@ export default function OpenBookings() {
           <div key={b.id} className="card turf-card">
             <h3>{b.turf_name}</h3>
             <p className="subtle">{b.turf_city}</p>
-            <p className="tag">{b.sport_type}</p>
+            <div className="chip-row">
+              {(b.turf_sports || []).map((s) => <span className="chip" key={s}>{s}</span>)}
+            </div>
             <p>{b.booking_date} · {b.start_time}–{b.end_time}</p>
             <p className="subtle small">{b.joined_count}/{b.max_players} players joined</p>
             <button className="btn-primary" onClick={() => openJoinPopup(b)}>

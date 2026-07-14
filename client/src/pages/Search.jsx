@@ -32,7 +32,9 @@ function TurfCard({ turf }) {
       </div>
       <h3>{turf.name}</h3>
       <p className="subtle">{turf.city}</p>
-      <div className="chip-row"><span className="chip">{turf.sport_type}</span></div>
+      <div className="chip-row">
+        {(turf.sports || []).map((s) => <span className="chip" key={s}>{s}</span>)}
+      </div>
       <p className="subtle small">Open {turf.open_time} – {turf.close_time}</p>
       <p className="price">
         {turf.old_price ? <span className="old-price">₹{turf.old_price}</span> : null}
@@ -51,6 +53,7 @@ export default function Search() {
   const [openTurfIds, setOpenTurfIds] = useState(null); // turf ids that currently have a joinable open booking
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false); // collapsed by default on mobile
 
   async function runSearch() {
     setLoading(true);
@@ -58,7 +61,7 @@ export default function Search() {
     try {
       const params = {};
       if (city) params.city = city;
-      if (selectedSports.length) params.sport_type = selectedSports.join(',');
+      if (selectedSports.length) params.sports = selectedSports.join(',');
       if (priceSort) params.sort = priceSort;
       const data = await api.searchTurfs(params);
       setTurfs(data.turfs);
@@ -95,6 +98,8 @@ export default function Search() {
     setPriceSort('');
   }
 
+  const activeFilterCount = selectedSports.length + bookingTypeFilter.length + (priceSort ? 1 : 0);
+
   const visibleTurfs = useMemo(() => {
     // "Private Booking" filter: every turf supports private booking, so it never excludes anything.
     // "Open Booking" filter: only show turfs with a currently joinable open booking.
@@ -118,8 +123,12 @@ export default function Search() {
         <button className="btn-primary" onClick={runSearch}>Search</button>
       </div>
 
+      <button className="filters-toggle-btn" onClick={() => setFiltersOpen((o) => !o)}>
+        {filtersOpen ? 'Hide filters' : 'Show filters'}{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+      </button>
+
       <div className="plp-layout">
-        <aside className="plp-filters">
+        <aside className={filtersOpen ? 'plp-filters open' : 'plp-filters'}>
           <h3>Price</h3>
           <label className="filter-option">
             <input

@@ -117,6 +117,33 @@ terminal; Ctrl+C stops both.
 If you'd rather run them separately (e.g. in two terminal tabs), the original per-folder instructions
 below still work exactly the same way.
 
+## Latest round (multi-sport turfs, dark theme, mobile filters, About page)
+
+- **Mobile PLP filters collapsed by default** — below ~700px, the filter sidebar is hidden behind a
+  "Show filters" toggle button (with an active-filter count badge) instead of eating the whole screen.
+- **Turfs can support multiple sports** — this was a real data model change, not just a UI tweak.
+  `turfs.sport_type` (a single string) was replaced with `turfs.sports` (a JSON array), validated
+  server-side against the same fixed list used in the PLP filters. The owner's turf form is now a
+  multi-select checkbox group instead of one dropdown. Every place that displayed a turf's sport
+  (PLP cards, PDP, My Bookings, Owner Dashboard, Join-a-game cards) now shows all of them as chips.
+  **This is a breaking schema change — delete `turfspace.db` before restarting the server**, same as
+  every previous schema change in this project.
+- **Cancel confirmation** — cancelling a booking (private or open, from My Bookings or the PDP's
+  confirm-booking popup) and leaving a joined game now both show a native "Are you sure?" confirm
+  dialog before the action actually happens.
+- **About page** (`/about`) — includes placeholder social links (clearly marked as placeholders —
+  swap in real ones whenever they exist) and a contact form. The contact form opens the visitor's own
+  email client, pre-addressed to antik.chowdhury.2025@iimu.ac.in with the message filled in. This is a
+  `mailto:` link, not a server-sent email — this sandbox has no route to an SMTP/email-provider API, so
+  a real "sent from our backend" contact form isn't something that could be built here. If you want
+  that later, it's a small addition once you have an email provider (e.g. SendGrid, Resend, Postmark)
+  and its API key.
+- **Dark theme** — a 🌙/☀️ toggle in the navbar switches the whole app between light and dark, persisted
+  in the browser's `localStorage` (this is a real deployed webapp, not a Claude-artifact sandbox, so
+  `localStorage` is the normal, correct tool here). Implemented entirely through CSS custom properties
+  (`--surface`, `--ink`, `--border`, etc. all swap under a `[data-theme="dark"]` selector), so no
+  component code needed to change.
+
 ## Latest round of fixes (mobile nav, notifications, ticket-style modals, and more)
 
 - **Mobile nav** — the top navbar collapses into a hamburger menu below ~800px instead of overflowing.
