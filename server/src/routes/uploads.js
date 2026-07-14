@@ -1,20 +1,18 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('../config/cloudinary');
 
 const router = express.Router();
 
-const uploadsDir = process.env.UPLOADS_DIR || path.join(__dirname, '..', 'uploads');
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadsDir),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, `${uuidv4()}${ext}`);
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'turfspace',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
   },
 });
 
@@ -33,9 +31,7 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024, files: 10 }, // 5MB per file
 });
 
-function publicUrlFor(req, filename) {
-  return `${req.protocol}://${req.get('host')}/uploads/${filename}`;
-}
+// With Cloudinary storage, `req.file.path` contains the hosted URL
 
 function handleMulterError(err, res) {
   if (err instanceof multer.MulterError) {
@@ -50,7 +46,7 @@ router.post('/single', requireAuth, requireRole('owner'), (req, res) => {
   upload.single('image')(req, res, (err) => {
     if (err) return handleMulterError(err, res);
     if (!req.file) return res.status(400).json({ error: 'No image file provided (field name: image)' });
-    res.status(201).json({ url: publicUrlFor(req, req.file.filename) });
+    res.status(201).json({ url: req.file.path });
   });
 });
 
@@ -61,9 +57,9 @@ router.post('/multiple', requireAuth, requireRole('owner'), (req, res) => {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: 'No image files provided (field name: images)' });
     }
-    const urls = req.files.map((f) => publicUrlFor(req, f.filename));
+    const urls = req.files.map((f) => f.path);
     res.status(201).json({ urls });
   });
 });
 
-module.exports = { router, uploadsDir };
+module.exports = { router };
