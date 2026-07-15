@@ -139,8 +139,7 @@ below still work exactly the same way.
   that later, it's a small addition once you have an email provider (e.g. SendGrid, Resend, Postmark)
   and its API key.
 - **Dark theme** — a 🌙/☀️ toggle in the navbar switches the whole app between light and dark, persisted
-  in the browser's `localStorage` (this is a real deployed webapp, not a Claude-artifact sandbox, so
-  `localStorage` is the normal, correct tool here). Implemented entirely through CSS custom properties
+  in the browser's `localStorage`. Implemented entirely through CSS custom properties
   (`--surface`, `--ink`, `--border`, etc. all swap under a `[data-theme="dark"]` selector), so no
   component code needed to change.
 
