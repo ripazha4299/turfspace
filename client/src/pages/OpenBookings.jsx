@@ -95,13 +95,13 @@ export default function OpenBookings() {
           <p className="subtle">No open games right now. Be the first — book a turf and mark it open.</p>
         )}
         {bookings.map((b) => (
-          <div key={b.id} className="card turf-card">
+          <div key={b.id} className="card turf-card open-booking-card">
             <h3>{b.turf_name}</h3>
             <p className="subtle">{b.turf_city}</p>
             <div className="chip-row">
               {(b.turf_sports || []).map((s) => <span className="chip" key={s}>{s}</span>)}
             </div>
-            <p>{b.booking_date} · {b.start_time}–{b.end_time}</p>
+            <p><span className="bold">{b.booking_date}</span> · {b.start_time}–{b.end_time}</p>
             <p className="subtle small">{b.joined_count}/{b.max_players} players joined</p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="btn-primary" onClick={() => openJoinPopup(b)}>

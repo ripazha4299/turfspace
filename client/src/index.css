@@ -213,7 +213,9 @@ a { text-decoration: none; color: inherit; }
 .owner-dashboard-form {
   max-width: 100%;
 }
-
+.bold{
+  font-weight: 700;
+}
 .form-main-with-aside {
   display: flex;
   flex-direction: column;
@@ -563,6 +565,10 @@ a { text-decoration: none; color: inherit; }
 
 .turf-card-content>*:last-child {
   margin-bottom: 0;
+}
+
+.open-booking-card{
+  padding: 12px;
 }
 
 .carousel-dots span {
