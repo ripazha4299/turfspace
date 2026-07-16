@@ -35,7 +35,7 @@ function BookingRow({ b, onCancel, onPay, onLeave, payingId, leavingId, onOpenDe
           {isJoined && <> · created by {PLAYER_ICON} {b.creator_name}</>}
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }} onClick={(e) => e.stopPropagation()}>
         {needsPayment && onPay && (
           <button className="btn-primary small" onClick={() => onPay(b.id)} disabled={payingId === b.id}>
             {payingId === b.id ? 'Paying…' : 'Pay Now'}
