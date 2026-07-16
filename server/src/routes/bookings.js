@@ -195,7 +195,7 @@ router.post('/:id/pay', requireAuth, (req, res) => {
 router.get('/open', (req, res) => {
   const { city, sports, date, turf_id } = req.query;
   let query = `
-    SELECT b.*, t.name as turf_name, t.city as turf_city, t.sports as turf_sports, t.address,
+    SELECT b.*, t.name as turf_name, t.city as turf_city, t.sports as turf_sports, t.address, t.cover_image as turf_cover_image,
       (SELECT COUNT(*) FROM booking_participants bp WHERE bp.booking_id = b.id) as joined_count
     FROM bookings b
     JOIN turfs t ON b.turf_id = t.id
@@ -308,7 +308,7 @@ router.post('/:id/leave', requireAuth, requireRole('player'), (req, res) => {
 // GET /api/bookings/:id -- detail with participants
 router.get('/:id', (req, res) => {
   const booking = db.prepare(
-    `SELECT b.*, t.name as turf_name, t.city as turf_city, t.sports as turf_sports, t.address, t.owner_id
+    `SELECT b.*, t.name as turf_name, t.city as turf_city, t.sports as turf_sports, t.address, t.cover_image as turf_cover_image, t.owner_id
      FROM bookings b JOIN turfs t ON b.turf_id = t.id WHERE b.id = ?`
   ).get(req.params.id);
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
@@ -360,6 +360,137 @@ router.get('/owner/calendar', requireAuth, requireRole('owner'), (req, res) => {
      ORDER BY b.booking_date ASC, b.start_time ASC`
   ).all(req.user.id);
   res.json({ bookings });
+});
+
+// GET /api/bookings/:id/owner-detail -- full detail + participant list for the
+// owner's dedicated booking-management page. Only the turf's owner can see this.
+router.get('/:id/owner-detail', requireAuth, requireRole('owner'), (req, res) => {
+  const booking = db.prepare(
+    `SELECT b.*, t.name as turf_name, t.city as turf_city, t.address as turf_address,
+       t.cover_image as turf_cover_image, t.owner_id, u.name as created_by_name, u.email as created_by_email
+     FROM bookings b
+     JOIN turfs t ON b.turf_id = t.id
+     JOIN users u ON b.created_by = u.id
+     WHERE b.id = ?`
+  ).get(req.params.id);
+  if (!booking) return res.status(404).json({ error: 'Booking not found' });
+  if (booking.owner_id !== req.user.id) return res.status(403).json({ error: 'Not your turf booking' });
+
+  const participants = db.prepare(
+    `SELECT u.id, u.name, u.email, bp.joined_at FROM booking_participants bp
+     JOIN users u ON bp.user_id = u.id WHERE bp.booking_id = ? ORDER BY bp.joined_at ASC`
+  ).all(req.params.id);
+
+  res.json({ booking, participants });
+});
+
+// PUT /api/bookings/:id/max-players -- owner increases (or otherwise sets) capacity
+// on an open booking. Can never be set below the number of players already joined.
+router.put('/:id/max-players', requireAuth, requireRole('owner'), (req, res) => {
+  const { max_players } = req.body;
+  const booking = db.prepare(
+    `SELECT b.*, t.owner_id FROM bookings b JOIN turfs t ON b.turf_id = t.id WHERE b.id = ?`
+  ).get(req.params.id);
+  if (!booking) return res.status(404).json({ error: 'Booking not found' });
+  if (booking.owner_id !== req.user.id) return res.status(403).json({ error: 'Not your turf booking' });
+  if (booking.booking_type !== 'open') return res.status(400).json({ error: 'Only open bookings have a player cap' });
+
+  const newMax = Number(max_players);
+  if (!Number.isInteger(newMax) || newMax < 2) {
+    return res.status(400).json({ error: 'max_players must be a whole number of at least 2' });
+  }
+  const joinedCount = db.prepare(
+    'SELECT COUNT(*) as c FROM booking_participants WHERE booking_id = ?'
+  ).get(req.params.id).c;
+  if (newMax < joinedCount) {
+    return res.status(400).json({ error: `Can't set max players below the ${joinedCount} already joined` });
+  }
+
+  db.prepare('UPDATE bookings SET max_players = ? WHERE id = ?').run(newMax, req.params.id);
+  res.json({ ok: true, max_players: newMax });
+});
+
+// POST /api/bookings/:id/participants -- owner manually adds a player to an open
+// booking (e.g. someone who booked over the phone/WhatsApp). Same overlap and
+// capacity rules as a normal self-join apply; the added player is notified.
+router.post('/:id/participants', requireAuth, requireRole('owner'), (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'email is required' });
+
+  const booking = db.prepare(
+    `SELECT b.*, t.owner_id, t.name as turf_name FROM bookings b JOIN turfs t ON b.turf_id = t.id WHERE b.id = ?`
+  ).get(req.params.id);
+  if (!booking) return res.status(404).json({ error: 'Booking not found' });
+  if (booking.owner_id !== req.user.id) return res.status(403).json({ error: 'Not your turf booking' });
+  if (booking.booking_type !== 'open') return res.status(400).json({ error: 'Only open bookings can have players added' });
+  if (booking.status === 'cancelled') return res.status(400).json({ error: 'This booking is cancelled' });
+
+  const player = db.prepare('SELECT * FROM users WHERE email = ? AND role = ?').get(email.toLowerCase(), 'player');
+  if (!player) return res.status(404).json({ error: 'No player found with that email' });
+
+  const joinedCount = db.prepare(
+    'SELECT COUNT(*) as c FROM booking_participants WHERE booking_id = ?'
+  ).get(req.params.id).c;
+  if (joinedCount >= booking.max_players) return res.status(409).json({ error: 'Booking is full' });
+
+  const already = db.prepare(
+    'SELECT id FROM booking_participants WHERE booking_id = ? AND user_id = ?'
+  ).get(req.params.id, player.id);
+  if (already) return res.status(409).json({ error: 'This player has already joined' });
+
+  if (!checkPlayerFree(player.id, booking.booking_date, booking.start_time, booking.end_time)) {
+    return res.status(409).json({ error: 'This player already has another booking that overlaps with this time slot' });
+  }
+
+  db.prepare(
+    `INSERT INTO booking_participants (id, booking_id, user_id) VALUES (?, ?, ?)`
+  ).run(uuidv4(), req.params.id, player.id);
+
+  createNotification(
+    player.id,
+    'added_to_game',
+    `${booking.turf_name}'s owner added you to a game on ${booking.booking_date} (${booking.start_time}–${booking.end_time}).`,
+    booking.id
+  );
+
+  const participants = db.prepare(
+    `SELECT u.id, u.name, u.email, bp.joined_at FROM booking_participants bp
+     JOIN users u ON bp.user_id = u.id WHERE bp.booking_id = ? ORDER BY bp.joined_at ASC`
+  ).all(req.params.id);
+  res.status(201).json({ participants });
+});
+
+// DELETE /api/bookings/:id/participants/:userId -- owner removes a joined player
+// (not the creator -- the creator's own booking must be cancelled, not "removed").
+router.delete('/:id/participants/:userId', requireAuth, requireRole('owner'), (req, res) => {
+  const booking = db.prepare(
+    `SELECT b.*, t.owner_id, t.name as turf_name FROM bookings b JOIN turfs t ON b.turf_id = t.id WHERE b.id = ?`
+  ).get(req.params.id);
+  if (!booking) return res.status(404).json({ error: 'Booking not found' });
+  if (booking.owner_id !== req.user.id) return res.status(403).json({ error: 'Not your turf booking' });
+  if (req.params.userId === booking.created_by) {
+    return res.status(400).json({ error: "Can't remove the creator -- cancel the booking instead" });
+  }
+
+  const participant = db.prepare(
+    'SELECT id FROM booking_participants WHERE booking_id = ? AND user_id = ?'
+  ).get(req.params.id, req.params.userId);
+  if (!participant) return res.status(404).json({ error: 'That player is not part of this booking' });
+
+  db.prepare('DELETE FROM booking_participants WHERE id = ?').run(participant.id);
+
+  createNotification(
+    req.params.userId,
+    'removed_from_game',
+    `${booking.turf_name}'s owner removed you from a game on ${booking.booking_date} (${booking.start_time}–${booking.end_time}).`,
+    booking.id
+  );
+
+  const participants = db.prepare(
+    `SELECT u.id, u.name, u.email, bp.joined_at FROM booking_participants bp
+     JOIN users u ON bp.user_id = u.id WHERE bp.booking_id = ? ORDER BY bp.joined_at ASC`
+  ).all(req.params.id);
+  res.json({ participants });
 });
 
 // POST /api/bookings/:id/no-show -- Epic 4, P1 (owner flags no-show, offers discount re-fill)

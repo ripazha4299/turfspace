@@ -19,5 +19,12 @@ services:
         value: https://your-frontend.vercel.app
       - key: DB_PATH
         value: /opt/render/project/src/server/data/turfspace.db
-      - key: UPLOADS_DIR
-        value: /opt/render/project/src/server/data/uploads
+      # Fill these in with your real Cloudinary credentials before deploying --
+      # image upload will fail without them. sync: false means Render will
+      # prompt you for the value rather than storing it in this file.
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false

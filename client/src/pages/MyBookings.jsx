@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import TicketModal from '../components/TicketModal';
+import ConfirmModal from '../components/ConfirmModal';
+import ShareButton from '../components/ShareButton';
 import { PLAYER_ICON } from '../constants';
 
 function formatDateNice(iso) {
@@ -33,17 +35,20 @@ function BookingRow({ b, onCancel, onPay, onLeave, payingId, leavingId, onOpenDe
           {isJoined && <> · created by {PLAYER_ICON} {b.creator_name}</>}
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 8 }} onClick={(e) => e.stopPropagation()}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
         {needsPayment && onPay && (
           <button className="btn-primary small" onClick={() => onPay(b.id)} disabled={payingId === b.id}>
             {payingId === b.id ? 'Paying…' : 'Pay Now'}
           </button>
         )}
+        {onCancel && b.booking_type === 'open' && b.status !== 'cancelled' && (
+          <ShareButton booking={b} className="btn-secondary small" />
+        )}
         {onCancel && b.status !== 'cancelled' && (
-          <button className="btn-secondary small" onClick={() => onCancel(b.id,isJoined)}>Cancel</button>
+          <button className="btn-secondary small" onClick={() => onCancel(b)}>Cancel</button>
         )}
         {onLeave && b.status !== 'cancelled' && (
-          <button className="btn-secondary small" onClick={() => onLeave(b.id,isJoined)} disabled={leavingId === b.id}>
+          <button className="btn-secondary small" onClick={() => onLeave(b.id)} disabled={leavingId === b.id}>
             {leavingId === b.id ? 'Leaving…' : 'Leave game'}
           </button>
         )}
@@ -62,6 +67,12 @@ export default function MyBookings() {
   const [leavingId, setLeavingId] = useState(null);
   const [showCancelled, setShowCancelled] = useState(false);
   const [detailBooking, setDetailBooking] = useState(null); // { booking, isJoined }
+  const [detailParticipants, setDetailParticipants] = useState(null);
+
+  // Cancel/leave confirmation state -- replaces window.confirm with a proper
+  // in-app modal so we can show the actual computed cancellation fee.
+  const [cancelTarget, setCancelTarget] = useState(null); // booking being cancelled
+  const [leaveTargetId, setLeaveTargetId] = useState(null);
 
   async function load() {
     setLoading(true);
@@ -81,11 +92,9 @@ export default function MyBookings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function handleCancel(id, isJoined) {
-    let msgString = 'Are you sure you want to leave this open-booking?';
-    if (!isJoined)
-      msgString = 'Are you sure you want to cancel this booking? Cancellation fee of 15% will be applied if the booking is cancelled.';
-    if (!window.confirm(msgString)) return;
+  async function confirmCancel() {
+    const id = cancelTarget.id;
+    setCancelTarget(null);
     try {
       await api.cancelBooking(id, token);
       load();
@@ -107,8 +116,9 @@ export default function MyBookings() {
     }
   }
 
-  async function handleLeave(id) {
-    if (!window.confirm('Are you sure you want to leave this game?')) return;
+  async function confirmLeave() {
+    const id = leaveTargetId;
+    setLeaveTargetId(null);
     setLeavingId(id);
     setError('');
     try {
@@ -121,8 +131,30 @@ export default function MyBookings() {
     }
   }
 
+  async function openDetail(booking, isJoined) {
+    setDetailBooking({ booking, isJoined });
+    setDetailParticipants(null);
+    if (booking.booking_type === 'open') {
+      try {
+        const data = await api.getBooking(booking.id);
+        setDetailParticipants(data.participants);
+      } catch (err) {
+        // non-fatal -- the ticket still shows without the participant list
+      }
+    }
+  }
+
   const visibleCreated = showCancelled ? created : created.filter((b) => b.status !== 'cancelled');
   const visibleJoined = showCancelled ? joined : joined.filter((b) => b.status !== 'cancelled');
+
+  // Computes the cancellation-fee breakdown to show in the confirm dialog --
+  // a fee only ever applies if money was actually collected (payment_status paid).
+  function cancelFeeDetails(b) {
+    if (b.payment_status !== 'paid') return null;
+    const fee = Math.round(b.amount_total * (b.cancellation_fee_pct / 100));
+    const refund = Math.max(0, b.amount_paid - fee);
+    return { fee, refund };
+  }
 
   return (
     <div className="page">
@@ -147,10 +179,10 @@ export default function MyBookings() {
                 <BookingRow
                   key={b.id}
                   b={b}
-                  onCancel={handleCancel}
+                  onCancel={setCancelTarget}
                   onPay={handlePay}
                   payingId={payingId}
-                  onOpenDetail={(booking) => setDetailBooking({ booking, isJoined: false })}
+                  onOpenDetail={(booking) => openDetail(booking, false)}
                 />
               ))}
             </ul>
@@ -167,10 +199,10 @@ export default function MyBookings() {
                 <BookingRow
                   key={b.id}
                   b={b}
-                  onLeave={handleLeave}
+                  onLeave={setLeaveTargetId}
                   leavingId={leavingId}
                   isJoined
-                  onOpenDetail={(booking) => setDetailBooking({ booking, isJoined: true })}
+                  onOpenDetail={(booking) => openDetail(booking, true)}
                 />
               ))}
             </ul>
@@ -212,7 +244,64 @@ export default function MyBookings() {
           {detailBooking.booking.status === 'cancelled' && detailBooking.booking.refund_amount != null && (
             <div className="ticket-row highlight"><span>Refund</span><span>₹{detailBooking.booking.refund_amount}</span></div>
           )}
+
+          {detailBooking.booking.booking_type === 'open' && (
+            <>
+              <div className="ticket-section-title">
+                Players ({detailParticipants ? detailParticipants.length : '…'}/{detailBooking.booking.max_players})
+              </div>
+              <div className="ticket-participant-list">
+                {detailParticipants === null ? (
+                  <p className="subtle small">Loading players…</p>
+                ) : (
+                  detailParticipants.map((p) => (
+                    <div className="ticket-participant-row" key={p.id}>
+                      <span>{PLAYER_ICON}</span>
+                      <span>{p.name}</span>
+                      {p.id === detailBooking.booking.created_by && <span className="chip">Creator</span>}
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
         </TicketModal>
+      )}
+
+      {cancelTarget && (
+        <ConfirmModal
+          title="Cancel this booking?"
+          message={
+            cancelTarget.booking_type === 'open'
+              ? "Cancelling removes everyone's spot in this game, not just yours."
+              : 'This will cancel your booking.'
+          }
+          details={(() => {
+            const fee = cancelFeeDetails(cancelTarget);
+            if (!fee) return <p className="subtle small">No payment was collected, so no cancellation fee applies.</p>;
+            return (
+              <>
+                <div className="ticket-row"><span>Cancellation fee ({cancelTarget.cancellation_fee_pct}%)</span><span>₹{fee.fee}</span></div>
+                <div className="ticket-row highlight"><span>You'll be refunded</span><span>₹{fee.refund}</span></div>
+              </>
+            );
+          })()}
+          confirmLabel="Cancel booking"
+          cancelLabel="Keep booking"
+          onConfirm={confirmCancel}
+          onCancel={() => setCancelTarget(null)}
+        />
+      )}
+
+      {leaveTargetId && (
+        <ConfirmModal
+          title="Leave this game?"
+          message="You'll be removed from the game. The creator will be notified."
+          confirmLabel="Leave game"
+          cancelLabel="Stay"
+          onConfirm={confirmLeave}
+          onCancel={() => setLeaveTargetId(null)}
+        />
       )}
     </div>
   );

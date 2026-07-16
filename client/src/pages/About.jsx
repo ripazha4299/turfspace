@@ -40,7 +40,7 @@ export default function About() {
 
       <div className="card">
         <h2>Follow us</h2>
-        <p className="subtle small">(Placeholder links — swap these for the real accounts whenever they're set up.)</p>
+        <p className="subtle small">(Our social media profiles)</p>
         <div className="social-links-row">
           {SOCIAL_LINKS.map((s) => (
             <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" className="social-link">

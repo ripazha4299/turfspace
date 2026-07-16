@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { SPORT_OPTIONS, PLAYER_ICON } from '../constants';
@@ -30,6 +31,7 @@ function turfToFormState(t) {
 
 export default function OwnerDashboard() {
   const { token } = useAuth();
+  const navigate = useNavigate();
   const [turfs, setTurfs] = useState([]);
   const [calendar, setCalendar] = useState([]);
   const [stats, setStats] = useState(null);
@@ -366,7 +368,11 @@ export default function OwnerDashboard() {
         ) : (
           <ul className="booking-list">
             {calendar.map((b) => (
-              <li key={b.id} className="booking-row booking-row-clickable" onClick={() => setDetailBooking(b)}>
+              <li
+                key={b.id}
+                className="booking-row booking-row-clickable"
+                onClick={() => (b.booking_type === 'open' ? navigate(`/owner/bookings/${b.id}`) : setDetailBooking(b))}
+              >
                 <div>
                   <strong>{b.turf_name}</strong> · {b.booking_date} · {b.start_time}–{b.end_time}
                   <div className="subtle small">

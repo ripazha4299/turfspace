@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import TicketModal from '../components/TicketModal';
+import ShareButton from '../components/ShareButton';
 import { SPORT_OPTIONS } from '../constants';
 
 function formatDateNice(iso) {
@@ -62,7 +63,7 @@ export default function OpenBookings() {
     try {
       await api.joinBooking(joiningBooking.id, token);
       setJoiningBooking(null);
-      runSearch({});
+      navigate('/my-bookings');
     } catch (err) {
       setJoinError(err.message);
     } finally {
@@ -102,9 +103,12 @@ export default function OpenBookings() {
             </div>
             <p>{b.booking_date} · {b.start_time}–{b.end_time}</p>
             <p className="subtle small">{b.joined_count}/{b.max_players} players joined</p>
-            <button className="btn-primary" onClick={() => openJoinPopup(b)}>
-              Join this game
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn-primary" onClick={() => openJoinPopup(b)}>
+                Join this game
+              </button>
+              <ShareButton booking={b} />
+            </div>
           </div>
         ))}
       </div>
@@ -112,7 +116,8 @@ export default function OpenBookings() {
       {joiningBooking && (
         <TicketModal
           turf={{
-            name: joiningBooking.turf_name, city: joiningBooking.turf_city, address: joiningBooking.address,
+            id: joiningBooking.turf_id, name: joiningBooking.turf_name, city: joiningBooking.turf_city,
+            address: joiningBooking.address, cover_image: joiningBooking.turf_cover_image,
           }}
           onClose={() => setJoiningBooking(null)}
           footer={

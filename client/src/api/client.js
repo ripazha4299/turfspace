@@ -77,6 +77,13 @@ export const api = {
   getBooking: (id) => request(`/bookings/${id}`),
   cancelBooking: (id, token) => request(`/bookings/${id}/cancel`, { method: 'POST', token }),
   ownerCalendar: (token) => request('/bookings/owner/calendar', { token }),
+  ownerBookingDetail: (id, token) => request(`/bookings/${id}/owner-detail`, { token }),
+  updateMaxPlayers: (id, max_players, token) =>
+    request(`/bookings/${id}/max-players`, { method: 'PUT', body: { max_players }, token }),
+  addParticipant: (id, email, token) =>
+    request(`/bookings/${id}/participants`, { method: 'POST', body: { email }, token }),
+  removeParticipant: (id, userId, token) =>
+    request(`/bookings/${id}/participants/${userId}`, { method: 'DELETE', token }),
   ownerStats: (token) => request('/bookings/owner/stats', { token }),
   flagNoShow: (id, discount_pct, token) =>
     request(`/bookings/${id}/no-show`, { method: 'POST', body: { discount_pct }, token }),

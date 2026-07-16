@@ -4,6 +4,8 @@ import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import TimeSlotPicker from '../components/TimeSlotPicker';
 import TicketModal from '../components/TicketModal';
+import ConfirmModal from '../components/ConfirmModal';
+import ShareButton from '../components/ShareButton';
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -45,6 +47,7 @@ export default function TurfDetail() {
   const [pendingBooking, setPendingBooking] = useState(null);
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState('');
+  const [showCancelPendingConfirm, setShowCancelPendingConfirm] = useState(false);
 
   // Join popup for an existing open booking in the right-hand panel
   const [joiningBooking, setJoiningBooking] = useState(null);
@@ -117,11 +120,6 @@ export default function TurfDetail() {
     loadOpenForTurf();
   }
 
-  function handleCancelPendingWithConfirm() {
-    if (!window.confirm('Are you sure you want to cancel this booking?')) return;
-    handleCancelPending();
-  }
-
   function handleClosePopupAfterFree() {
     setPendingBooking(null);
     navigate('/my-bookings');
@@ -139,7 +137,7 @@ export default function TurfDetail() {
     try {
       await api.joinBooking(joiningBooking.id, token);
       setJoiningBooking(null);
-      loadOpenForTurf();
+      navigate('/my-bookings');
     } catch (err) {
       setJoinError(err.message);
     } finally {
@@ -268,6 +266,9 @@ export default function TurfDetail() {
                   <strong>{formatDateNice(b.booking_date)}</strong>
                   <div className="subtle small">{b.start_time}–{b.end_time}</div>
                   <div className="subtle small">{b.joined_count}/{b.max_players} players</div>
+                  <div style={{ marginTop: 6 }}>
+                    <ShareButton booking={b} />
+                  </div>
                 </div>
               ))
             )}
@@ -299,7 +300,7 @@ export default function TurfDetail() {
               </button>
             ) : (
               <>
-                <button className="btn-secondary" onClick={handleCancelPendingWithConfirm} disabled={paying}>Cancel</button>
+                <button className="btn-secondary" onClick={() => setShowCancelPendingConfirm(true)} disabled={paying}>Cancel</button>
                 <button className="btn-primary" onClick={handlePayNow} disabled={paying}>
                   {paying ? 'Processing…' : 'Pay Now'}
                 </button>
@@ -349,6 +350,21 @@ export default function TurfDetail() {
             Disclaimer: joining is free — only the person who created this open booking pays.
           </p>
         </TicketModal>
+      )}
+
+      {showCancelPendingConfirm && pendingBooking && (
+        <ConfirmModal
+          title="Cancel this booking?"
+          message={
+            pendingBooking.payment_type !== 'free'
+              ? "You haven't paid yet, so no cancellation fee applies."
+              : 'This will cancel your booking.'
+          }
+          confirmLabel="Cancel booking"
+          cancelLabel="Keep booking"
+          onConfirm={() => { setShowCancelPendingConfirm(false); handleCancelPending(); }}
+          onCancel={() => setShowCancelPendingConfirm(false)}
+        />
       )}
     </div>
   );

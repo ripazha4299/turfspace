@@ -13,6 +13,8 @@ import TurfDetail from './pages/TurfDetail';
 import OpenBookings from './pages/OpenBookings';
 import MyBookings from './pages/MyBookings';
 import OwnerDashboard from './pages/OwnerDashboard';
+import OwnerBookingDetail from './pages/OwnerBookingDetail';
+import SharedGame from './pages/SharedGame';
 import Profile from './pages/Profile';
 
 export default function App() {
@@ -30,6 +32,7 @@ export default function App() {
               <Route path="/search" element={<Search />} />
               <Route path="/turfs/:id" element={<TurfDetail />} />
               <Route path="/open" element={<OpenBookings />} />
+              <Route path="/games/:id" element={<SharedGame />} />
               <Route
                 path="/my-bookings"
                 element={
@@ -43,6 +46,14 @@ export default function App() {
                 element={
                   <RequireRole role="owner">
                     <OwnerDashboard />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/owner/bookings/:id"
+                element={
+                  <RequireRole role="owner">
+                    <OwnerBookingDetail />
                   </RequireRole>
                 }
               />
