@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { SPORT_OPTIONS } from '../constants';
+import CampaignBanner from '../components/CampaignBanner';
 
 function TurfCard({ turf }) {
   const images = turf.cover_image ? [turf.cover_image, ...(turf.gallery || [])] : (turf.gallery || []);
@@ -67,6 +68,7 @@ export default function Search() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false); // collapsed by default on mobile
+  const [campaigns, setCampaigns] = useState([]);
 
   async function runSearch() {
     setLoading(true);
@@ -86,6 +88,9 @@ export default function Search() {
       } else {
         setOpenTurfIds(null);
       }
+
+      const campaignData = await api.activeCampaigns(city ? { city } : {});
+      setCampaigns(campaignData.campaigns);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -202,6 +207,9 @@ export default function Search() {
             <p className="subtle">No turfs match these filters. Try widening your search.</p>
           )}
           <div className="plp-grid">
+            {campaigns.map((c) => (
+              <CampaignBanner key={c.id} campaign={c} />
+            ))}
             {visibleTurfs.map((turf) => (
               <TurfCard key={turf.id} turf={turf} />
             ))}

@@ -114,7 +114,9 @@ export default function OwnerBookingDetail() {
         <div className="ticket-person-badge">
           <span>{PLAYER_ICON}</span>
           <div>
-            <div style={{ fontWeight: 700 }}>{booking.created_by_name}</div>
+            <div style={{ fontWeight: 700 }}>
+              <Link to={`/users/${booking.created_by}`}>{booking.created_by_name}</Link>
+            </div>
             <div className="subtle small">{booking.created_by_email}</div>
           </div>
         </div>
@@ -140,7 +142,7 @@ export default function OwnerBookingDetail() {
               {participants.map((p) => (
                 <li key={p.id} className="booking-row">
                   <div>
-                    <strong>{PLAYER_ICON} {p.name}</strong>
+                    <strong>{PLAYER_ICON} <Link to={`/users/${p.id}`}>{p.name}</Link></strong>
                     <div className="subtle small">{p.email}</div>
                   </div>
                   {p.id !== booking.created_by && (

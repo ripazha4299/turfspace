@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import NavBar from './components/NavBar';
@@ -16,10 +17,13 @@ import OwnerDashboard from './pages/OwnerDashboard';
 import OwnerBookingDetail from './pages/OwnerBookingDetail';
 import SharedGame from './pages/SharedGame';
 import Profile from './pages/Profile';
+import PublicProfile from './pages/PublicProfile';
+import Messages from './pages/Messages';
 
 export default function App() {
   return (
-    <ThemeProvider>
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ''}>
+      <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
           <NavBar />
@@ -65,10 +69,35 @@ export default function App() {
                   </RequireRole>
                 }
               />
+              <Route
+                path="/users/:id"
+                element={
+                  <RequireRole>
+                    <PublicProfile />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/messages"
+                element={
+                  <RequireRole>
+                    <Messages />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/messages/:userId"
+                element={
+                  <RequireRole>
+                    <Messages />
+                  </RequireRole>
+                }
+              />
             </Routes>
           </main>
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>
+    </GoogleOAuthProvider>
   );
 }

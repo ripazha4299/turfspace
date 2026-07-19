@@ -1,3 +1,45 @@
+# TurfSpace — MVP Codebase
+
+## Latest round: messaging, Google SSO, campaigns, profiles, and fixes
+
+- **Direct messaging** — any two users (player↔owner or otherwise) can message each other. Nav bar
+  has a Messages link with an unread badge; conversations poll every 8s while open. Start a
+  conversation from someone's public profile page.
+- **Google Sign-In** — a "Sign in with Google" button on Login/Register, verified server-side via
+  `google-auth-library`. **Needs your own Google Cloud OAuth Client ID to actually work** — see
+  "Setting up Google Sign-In" below. New Google sign-ups default to the Player role.
+- **Camera capture for turf photos** — the owner's image upload now offers "take a photo" as well
+  as "choose a file" on mobile.
+- **Public profiles** — view any user's basic profile (`/users/:id`); owners' profiles list their
+  turfs. Email is deliberately never shown on a public profile.
+- **Share any booking, join only the open ones** — the shareable `/games/:id` page now works for
+  private bookings too (shows details, no join button); only open bookings are joinable.
+- **Banner campaigns** — owners can run a full-width promotional banner on the turf search page
+  (their own promo image/text on one side, live turf details — photo, description, price — on the
+  other). Manage campaigns from the Owner Dashboard.
+- **Cross-turf booking is now allowed** (with a disclaimer) — a deliberate rule change: a player
+  CAN now book two different turfs at the same time slot (e.g. booking one for a friend); same-turf
+  double-booking is still blocked. A "Booking for a friend?" disclaimer with a Share button appears
+  when this happens.
+- **Fixed: login redirect losing your place** — following a shared link while logged out, then
+  logging in or registering, now correctly returns you to that same page instead of a generic one.
+
+### Setting up Google Sign-In (required for that feature to work)
+1. Go to https://console.cloud.google.com/apis/credentials, create an OAuth Client ID of type
+   **Web application**.
+2. Under "Authorized JavaScript origins," add your frontend's URL (e.g. `http://localhost:5173`
+   for local dev, and your real deployed frontend URL later).
+3. Copy the generated Client ID into **both** `client/.env` (`VITE_GOOGLE_CLIENT_ID`) and
+   `server/.env` (`GOOGLE_CLIENT_ID`) — same value in both places.
+4. Without this, the Google button still renders but signing in will fail with a clear error
+   rather than crashing anything.
+
+Full-stack implementation of the TurfSpace MVP (see PRD): a two-sided marketplace connecting
+relocating professionals ("Individual Players") with sports venues ("Turf Owners"), scoped to the
+P0/P1 stories — search & discovery, private booking, open/joinable booking, turf owner management,
+no-show handling, and basic profiles.
+
+
 # TurfSpace — MVP
 
 Hey! This is my full-stack build of TurfSpace — a two-sided marketplace connecting relocating

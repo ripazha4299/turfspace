@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { PLAYER_ICON, TURF_ICON } from '../constants';
 import NotificationBell from './NotificationBell';
+import MessagesLink from './MessagesLink';
 import turfSpaceIcon from "../assets/icons/turfSpaceIcon.svg";
 
 export default function NavBar() {
@@ -57,6 +58,7 @@ export default function NavBar() {
           </button>
           {user ? (
             <>
+              <MessagesLink onClick={closeMenu} />
               <Link to="/profile" onClick={closeMenu} className="nav-user-link">
                 <span aria-hidden="true">{roleIcon}</span> {user.name}
               </Link>

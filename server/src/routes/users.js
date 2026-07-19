@@ -59,4 +59,24 @@ router.get('/me/bookings', requireAuth, (req, res) => {
   res.json({ created, joined });
 });
 
+// GET /api/users/:id/public-profile -- lets any logged-in user view another
+// user's basic profile (item: "let users view each other's profile"). Deliberately
+// excludes email -- that's only ever shown to someone already in a shared booking
+// context (a ticket popup), not broadcast to anyone who looks someone up.
+router.get('/:id/public-profile', requireAuth, (req, res) => {
+  const user = db.prepare('SELECT id, name, role, city, sport_preferences FROM users WHERE id = ?').get(req.params.id);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  const profile = { id: user.id, name: user.name, role: user.role, city: user.city };
+  if (user.role === 'player') {
+    profile.sport_preferences = user.sport_preferences;
+  } else {
+    profile.turfs = db.prepare(
+      `SELECT id, name, city, cover_image FROM turfs WHERE owner_id = ? ORDER BY created_at DESC`
+    ).all(user.id);
+  }
+
+  res.json({ profile });
+});
+
 module.exports = router;

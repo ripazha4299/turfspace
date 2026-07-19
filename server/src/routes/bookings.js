@@ -18,10 +18,13 @@ function checkSlotFree(turf_id, booking_date, start_time, end_time) {
   return !existing.some((b) => timesOverlap(start_time, end_time, b.start_time, b.end_time));
 }
 
-// A player can't be in two places at once: checks every booking this user is
-// involved in (as creator OR as a joined participant, across ALL turfs) for
-// a time overlap on the same date. Used both when creating and when joining.
-function checkPlayerFree(userId, booking_date, start_time, end_time) {
+// Same-turf overlap is always blocked (checkSlotFree above). Cross-turf overlap
+// for the SAME player is intentionally allowed -- a player may be booking a
+// second turf for a friend at the same time as their own game elsewhere. This
+// just detects that situation so the UI can show a "booking for a friend?"
+// disclaimer; it no longer blocks anything. Checks every booking this user is
+// involved in (as creator OR as a joined participant, across ALL turfs).
+function playerHasOverlapElsewhere(userId, booking_date, start_time, end_time) {
   const created = db.prepare(
     `SELECT start_time, end_time FROM bookings
      WHERE created_by = ? AND booking_date = ? AND status != 'cancelled'`
@@ -33,7 +36,7 @@ function checkPlayerFree(userId, booking_date, start_time, end_time) {
      WHERE bp.user_id = ? AND b.booking_date = ? AND b.status != 'cancelled'`
   ).all(userId, booking_date);
 
-  return ![...created, ...joined].some((b) => timesOverlap(start_time, end_time, b.start_time, b.end_time));
+  return [...created, ...joined].some((b) => timesOverlap(start_time, end_time, b.start_time, b.end_time));
 }
 
 // Parses "HH:MM" into minutes since midnight. Returns NaN if malformed.
@@ -119,11 +122,10 @@ router.post('/', requireAuth, requireRole('player'), (req, res) => {
     return res.status(409).json({ error: 'This slot overlaps with an existing booking' });
   }
 
-  // Blocks the player from holding two overlapping bookings anywhere on the
-  // platform, whether they created or joined the other one.
-  if (!checkPlayerFree(req.user.id, booking_date, start_time, end_time)) {
-    return res.status(409).json({ error: 'You already have another booking that overlaps with this time slot' });
-  }
+  // Cross-turf overlap is allowed (e.g. booking a second turf for a friend at
+  // the same time as your own game elsewhere) -- just flagged for the UI to
+  // show a "booking for a friend?" disclaimer, never blocked.
+  const overlapsElsewhere = playerHasOverlapElsewhere(req.user.id, booking_date, start_time, end_time);
 
   const payment = computePayment(turf, payment_type, slotCheck.durationMinutes);
   if (payment.error) return res.status(400).json({ error: payment.error });
@@ -158,7 +160,7 @@ router.post('/', requireAuth, requireRole('player'), (req, res) => {
   }
 
   const booking = db.prepare('SELECT * FROM bookings WHERE id = ?').get(id);
-  res.status(201).json({ booking });
+  res.status(201).json({ booking, overlaps_with_other_booking: overlapsElsewhere });
 });
 
 // POST /api/bookings/:id/pay -- simulates the "Pay Now" step of the Confirm/Join
@@ -251,11 +253,9 @@ router.post('/:id/join', requireAuth, requireRole('player'), (req, res) => {
   ).get(req.params.id, req.user.id);
   if (already) return res.status(409).json({ error: 'Already joined this booking' });
 
-  // Same rule as booking creation: can't join a game that overlaps with
-  // something else this player already created or joined.
-  if (!checkPlayerFree(req.user.id, booking.booking_date, booking.start_time, booking.end_time)) {
-    return res.status(409).json({ error: 'You already have another booking that overlaps with this time slot' });
-  }
+  // Cross-turf overlap is allowed (booking/joining for a friend) -- just
+  // flagged, never blocked. See playerHasOverlapElsewhere's comment above.
+  const overlapsElsewhere = playerHasOverlapElsewhere(req.user.id, booking.booking_date, booking.start_time, booking.end_time);
 
   db.prepare(
     `INSERT INTO booking_participants (id, booking_id, user_id) VALUES (?, ?, ?)`
@@ -273,7 +273,7 @@ router.post('/:id/join', requireAuth, requireRole('player'), (req, res) => {
     `SELECT u.id, u.name FROM booking_participants bp JOIN users u ON bp.user_id = u.id WHERE bp.booking_id = ?`
   ).all(req.params.id);
 
-  res.json({ booking, participants });
+  res.json({ booking, participants, overlaps_with_other_booking: overlapsElsewhere });
 });
 
 // POST /api/bookings/:id/leave -- a participant (not the creator) backs out of
@@ -438,9 +438,8 @@ router.post('/:id/participants', requireAuth, requireRole('owner'), (req, res) =
   ).get(req.params.id, player.id);
   if (already) return res.status(409).json({ error: 'This player has already joined' });
 
-  if (!checkPlayerFree(player.id, booking.booking_date, booking.start_time, booking.end_time)) {
-    return res.status(409).json({ error: 'This player already has another booking that overlaps with this time slot' });
-  }
+  // Cross-turf overlap is allowed platform-wide now (see playerHasOverlapElsewhere) --
+  // an owner manually adding a player isn't blocked by it either.
 
   db.prepare(
     `INSERT INTO booking_participants (id, booking_id, user_id) VALUES (?, ?, ?)`

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { SPORT_OPTIONS, PLAYER_ICON } from '../constants';
@@ -45,19 +45,31 @@ export default function OwnerDashboard() {
   const [uploadingGallery, setUploadingGallery] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const coverInputRef = useRef(null);
+  const coverCameraRef = useRef(null);
   const galleryInputRef = useRef(null);
+  const galleryCameraRef = useRef(null);
 
   const [detailBooking, setDetailBooking] = useState(null);
 
+  const [campaigns, setCampaigns] = useState([]);
+  const [campaignForm, setCampaignForm] = useState({ turf_id: '', promo_image: '', promo_text: '' });
+  const [showCampaignForm, setShowCampaignForm] = useState(false);
+  const [uploadingPromo, setUploadingPromo] = useState(false);
+  const [savingCampaign, setSavingCampaign] = useState(false);
+  const [campaignError, setCampaignError] = useState('');
+  const promoInputRef = useRef(null);
+
   async function loadAll() {
-    const [turfsRes, calRes, statsRes] = await Promise.all([
+    const [turfsRes, calRes, statsRes, campaignsRes] = await Promise.all([
       api.myTurfs(token),
       api.ownerCalendar(token),
       api.ownerStats(token),
+      api.myCampaigns(token),
     ]);
     setTurfs(turfsRes.turfs);
     setCalendar(calRes.bookings);
     setStats(statsRes);
+    setCampaigns(campaignsRes.campaigns);
   }
 
   useEffect(() => {
@@ -113,6 +125,7 @@ export default function OwnerDashboard() {
     } finally {
       setUploadingCover(false);
       if (coverInputRef.current) coverInputRef.current.value = '';
+      if (coverCameraRef.current) coverCameraRef.current.value = '';
     }
   }
 
@@ -129,6 +142,7 @@ export default function OwnerDashboard() {
     } finally {
       setUploadingGallery(false);
       if (galleryInputRef.current) galleryInputRef.current.value = '';
+      if (galleryCameraRef.current) galleryCameraRef.current.value = '';
     }
   }
 
@@ -171,6 +185,51 @@ export default function OwnerDashboard() {
       loadAll();
     } catch (err) {
       setError(err.message);
+    }
+  }
+
+  async function handlePromoImageChange(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setCampaignError('');
+    setUploadingPromo(true);
+    try {
+      const data = await api.uploadSingleImage(file, token);
+      setCampaignForm((f) => ({ ...f, promo_image: data.url }));
+    } catch (err) {
+      setCampaignError(err.message);
+    } finally {
+      setUploadingPromo(false);
+      if (promoInputRef.current) promoInputRef.current.value = '';
+    }
+  }
+
+  async function handleCreateCampaign(e) {
+    e.preventDefault();
+    setCampaignError('');
+    if (!campaignForm.turf_id) {
+      setCampaignError('Choose which turf this campaign is for.');
+      return;
+    }
+    setSavingCampaign(true);
+    try {
+      await api.createCampaign(campaignForm, token);
+      setCampaignForm({ turf_id: '', promo_image: '', promo_text: '' });
+      setShowCampaignForm(false);
+      loadAll();
+    } catch (err) {
+      setCampaignError(err.message);
+    } finally {
+      setSavingCampaign(false);
+    }
+  }
+
+  async function handleToggleCampaign(campaign) {
+    try {
+      await api.updateCampaign(campaign.id, { is_active: !campaign.is_active }, token);
+      loadAll();
+    } catch (err) {
+      setCampaignError(err.message);
     }
   }
 
@@ -288,6 +347,10 @@ export default function OwnerDashboard() {
                     Cover image
                     <input type="file" accept="image/*" ref={coverInputRef} onChange={handleCoverFileChange} disabled={uploadingCover} />
                   </label>
+                  <label className="subtle small">
+                    Or take a photo
+                    <input type="file" accept="image/*" capture="environment" ref={coverCameraRef} onChange={handleCoverFileChange} disabled={uploadingCover} />
+                  </label>
                   {uploadingCover && <p className="subtle small">Uploading…</p>}
                   {form.cover_image && (
                     <div className="image-preview-card" style={{ position: 'relative', width: 120 }}>
@@ -306,6 +369,10 @@ export default function OwnerDashboard() {
                   <label>
                     Gallery images (you can select multiple, or add more to existing ones)
                     <input type="file" accept="image/*" multiple ref={galleryInputRef} onChange={handleGalleryFilesChange} disabled={uploadingGallery} />
+                  </label>
+                  <label className="subtle small">
+                    Or take a photo
+                    <input type="file" accept="image/*" capture="environment" ref={galleryCameraRef} onChange={handleGalleryFilesChange} disabled={uploadingGallery} />
                   </label>
                   {uploadingGallery && <p className="subtle small">Uploading…</p>}
                   {form.gallery.length > 0 && (
@@ -362,6 +429,77 @@ export default function OwnerDashboard() {
       </div>
 
       <div className="card">
+        <div className="card-header-row">
+          <h2>Banner campaigns</h2>
+          <button className="btn-secondary small" onClick={() => setShowCampaignForm((s) => !s)}>
+            {showCampaignForm ? 'Cancel' : '+ New campaign'}
+          </button>
+        </div>
+        <p className="subtle small">
+          A banner campaign shows a full-width promo row on the turf search page, with your promo
+          image/message on one side and your turf's live details (photo, description, price) on the other.
+        </p>
+
+        {showCampaignForm && (
+          <form className="form" onSubmit={handleCreateCampaign}>
+            <label>
+              Turf
+              <select
+                required
+                value={campaignForm.turf_id}
+                onChange={(e) => setCampaignForm((f) => ({ ...f, turf_id: e.target.value }))}
+              >
+                <option value="">Select a turf…</option>
+                {turfs.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            </label>
+            <label>
+              Promo image (optional)
+              <input type="file" accept="image/*" ref={promoInputRef} onChange={handlePromoImageChange} disabled={uploadingPromo} />
+            </label>
+            {uploadingPromo && <p className="subtle small">Uploading…</p>}
+            {campaignForm.promo_image && (
+              <img src={campaignForm.promo_image} alt="Promo preview" style={{ width: 160, height: 100, objectFit: 'cover', borderRadius: 8 }} />
+            )}
+            <label>
+              Promo text
+              <textarea
+                required
+                placeholder="e.g. 20% off weekday mornings this month!"
+                value={campaignForm.promo_text}
+                onChange={(e) => setCampaignForm((f) => ({ ...f, promo_text: e.target.value }))}
+              />
+            </label>
+            {campaignError && <div className="error-text">{campaignError}</div>}
+            <button className="btn-primary" disabled={savingCampaign || uploadingPromo} type="submit">
+              {savingCampaign ? 'Saving…' : 'Launch campaign'}
+            </button>
+          </form>
+        )}
+
+        {campaigns.length === 0 ? (
+          <p className="subtle">No campaigns yet.</p>
+        ) : (
+          <ul className="booking-list">
+            {campaigns.map((c) => (
+              <li key={c.id} className="booking-row">
+                <div>
+                  <strong>{c.turf_name}</strong>
+                  <div className="subtle small">{c.promo_text}</div>
+                  <span className={`status-badge ${c.is_active ? 'confirmed' : 'cancelled'}`}>
+                    {c.is_active ? 'active' : 'inactive'}
+                  </span>
+                </div>
+                <button className="btn-secondary small" onClick={() => handleToggleCampaign(c)}>
+                  {c.is_active ? 'Deactivate' : 'Reactivate'}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="card">
         <h2>Booking calendar</h2>
         {calendar.length === 0 ? (
           <p className="subtle">No bookings yet across your turfs.</p>
@@ -377,7 +515,9 @@ export default function OwnerDashboard() {
                   <strong>{b.turf_name}</strong> · {b.booking_date} · {b.start_time}–{b.end_time}
                   <div className="subtle small">
                     {b.booking_type === 'open' ? `Open (${b.joined_count}/${b.max_players})` : 'Private'} ·{' '}
-                    booked by {PLAYER_ICON} {b.created_by_name} ·{' '}
+                    booked by {PLAYER_ICON}{' '}
+                    <Link to={`/users/${b.created_by}`} onClick={(e) => e.stopPropagation()}>{b.created_by_name}</Link>
+                    {' '}·{' '}
                     <span className={`status-badge ${b.status}`}>{b.status.replace('_', ' ')}</span>
                   </div>
                 </div>
@@ -417,7 +557,9 @@ export default function OwnerDashboard() {
           <div className="ticket-person-badge">
             <span>{PLAYER_ICON}</span>
             <div>
-              <div style={{ fontWeight: 700 }}>{detailBooking.created_by_name}</div>
+              <div style={{ fontWeight: 700 }}>
+                <Link to={`/users/${detailBooking.created_by}`}>{detailBooking.created_by_name}</Link>
+              </div>
               <div className="subtle small">{detailBooking.created_by_email}</div>
             </div>
           </div>

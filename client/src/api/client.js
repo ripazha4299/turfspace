@@ -47,10 +47,23 @@ async function uploadRequest(path, formData, token) {
 export const api = {
   register: (payload) => request('/auth/register', { method: 'POST', body: payload }),
   login: (payload) => request('/auth/login', { method: 'POST', body: payload }),
+  googleAuth: (credential) => request('/auth/google', { method: 'POST', body: { credential } }),
 
   me: (token) => request('/users/me', { token }),
   updateMe: (payload, token) => request('/users/me', { method: 'PUT', body: payload, token }),
   myBookings: (token) => request('/users/me/bookings', { token }),
+  publicProfile: (id, token) => request(`/users/${id}/public-profile`, { token }),
+
+  activeCampaigns: (params) => request(`/campaigns/active?${new URLSearchParams(params)}`),
+  myCampaigns: (token) => request('/campaigns/mine', { token }),
+  createCampaign: (payload, token) => request('/campaigns', { method: 'POST', body: payload, token }),
+  updateCampaign: (id, payload, token) => request(`/campaigns/${id}`, { method: 'PUT', body: payload, token }),
+
+  conversations: (token) => request('/messages/conversations', { token }),
+  unreadMessageCount: (token) => request('/messages/unread-count', { token }),
+  messagesWith: (userId, token) => request(`/messages/with/${userId}`, { token }),
+  sendMessage: (recipient_id, content, token) =>
+    request('/messages', { method: 'POST', body: { recipient_id, content }, token }),
 
   searchTurfs: (params) => request(`/turfs?${new URLSearchParams(params)}`),
   getTurf: (id) => request(`/turfs/${id}`),

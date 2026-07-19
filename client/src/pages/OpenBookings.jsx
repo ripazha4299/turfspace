@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import TicketModal from '../components/TicketModal';
 import ShareButton from '../components/ShareButton';
 import { SPORT_OPTIONS } from '../constants';
@@ -25,6 +25,7 @@ export default function OpenBookings() {
 
   const { user, token } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   async function runSearch(params) {
     setLoading(true);
@@ -52,7 +53,7 @@ export default function OpenBookings() {
   }
 
   function openJoinPopup(booking) {
-    if (!user) { navigate('/login'); return; }
+    if (!user) { navigate('/login', { state: { from: location.pathname } }); return; }
     setJoinError('');
     setJoiningBooking(booking);
   }
@@ -61,9 +62,13 @@ export default function OpenBookings() {
     setJoinSubmitting(true);
     setJoinError('');
     try {
-      await api.joinBooking(joiningBooking.id, token);
-      setJoiningBooking(null);
-      navigate('/my-bookings');
+      const data = await api.joinBooking(joiningBooking.id, token);
+      if (data.overlaps_with_other_booking) {
+        setJoiningBooking((b) => ({ ...b, _joined: true }));
+      } else {
+        setJoiningBooking(null);
+        navigate('/my-bookings');
+      }
     } catch (err) {
       setJoinError(err.message);
     } finally {
@@ -119,25 +124,43 @@ export default function OpenBookings() {
             id: joiningBooking.turf_id, name: joiningBooking.turf_name, city: joiningBooking.turf_city,
             address: joiningBooking.address, cover_image: joiningBooking.turf_cover_image,
           }}
-          onClose={() => setJoiningBooking(null)}
+          onClose={() => {
+            const wasJoined = joiningBooking._joined;
+            setJoiningBooking(null);
+            if (wasJoined) navigate('/my-bookings');
+          }}
           footer={
-            <>
-              <button className="btn-secondary" onClick={() => setJoiningBooking(null)} disabled={joinSubmitting}>Cancel</button>
-              <button className="btn-primary" onClick={confirmJoin} disabled={joinSubmitting}>
-                {joinSubmitting ? 'Joining…' : 'Confirm & Join'}
+            joiningBooking._joined ? (
+              <button className="btn-primary" style={{ width: '100%' }} onClick={() => { setJoiningBooking(null); navigate('/my-bookings'); }}>
+                Continue to My Bookings
               </button>
-            </>
+            ) : (
+              <>
+                <button className="btn-secondary" onClick={() => setJoiningBooking(null)} disabled={joinSubmitting}>Cancel</button>
+                <button className="btn-primary" onClick={confirmJoin} disabled={joinSubmitting}>
+                  {joinSubmitting ? 'Joining…' : 'Confirm & Join'}
+                </button>
+              </>
+            )
           }
         >
-          <h2 style={{ marginTop: 0 }}>Join This Game?</h2>
+          <h2 style={{ marginTop: 0 }}>{joiningBooking._joined ? "You're In!" : 'Join This Game?'}</h2>
+          {joiningBooking._joined && (
+            <div className="disclaimer-banner">
+              Booking for a friend? Share this game's details with them so they know where to go.
+              <div style={{ marginTop: 8 }}><ShareButton booking={joiningBooking} /></div>
+            </div>
+          )}
           <div className="ticket-section-title">Details</div>
           <div className="ticket-row"><span>Date</span><span>{formatDateNice(joiningBooking.booking_date)}</span></div>
           <div className="ticket-row"><span>Time</span><span>{joiningBooking.start_time}–{joiningBooking.end_time}</span></div>
           <div className="ticket-row"><span>Players</span><span>{joiningBooking.joined_count}/{joiningBooking.max_players}</span></div>
           {joinError && <div className="error-text">{joinError}</div>}
-          <p className="subtle small" style={{ marginTop: 10 }}>
-            Disclaimer: joining is free — only the person who created this open booking pays.
-          </p>
+          {!joiningBooking._joined && (
+            <p className="subtle small" style={{ marginTop: 10 }}>
+              Disclaimer: joining is free — only the person who created this open booking pays.
+            </p>
+          )}
         </TicketModal>
       )}
     </div>
