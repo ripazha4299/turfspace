@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import TimeSlotPicker from '../components/TimeSlotPicker';
@@ -27,6 +27,7 @@ export default function TurfDetail() {
   const { id } = useParams();
   const { user, token } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [turf, setTurf] = useState(null);
   const [date, setDate] = useState(todayISO());
@@ -47,12 +48,14 @@ export default function TurfDetail() {
   const [pendingBooking, setPendingBooking] = useState(null);
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState('');
+  const [overlapsElsewhere, setOverlapsElsewhere] = useState(false);
   const [showCancelPendingConfirm, setShowCancelPendingConfirm] = useState(false);
 
   // Join popup for an existing open booking in the right-hand panel
   const [joiningBooking, setJoiningBooking] = useState(null);
   const [joinSubmitting, setJoinSubmitting] = useState(false);
   const [joinError, setJoinError] = useState('');
+  const [joinOverlapsElsewhere, setJoinOverlapsElsewhere] = useState(false);
 
   useEffect(() => {
     api.getTurf(id).then((data) => setTurf(data.turf));
@@ -79,7 +82,7 @@ export default function TurfDetail() {
   async function handleBook(e) {
     e.preventDefault();
     setError('');
-    if (!user) { navigate('/login'); return; }
+    if (!user) { navigate('/login', { state: { from: location.pathname } }); return; }
     if (user.role !== 'player') { setError('Only players can book turfs.'); return; }
 
     setLoading(true);
@@ -92,6 +95,7 @@ export default function TurfDetail() {
         token
       );
       setPendingBooking(data.booking);
+      setOverlapsElsewhere(data.overlaps_with_other_booking);
       setPayError('');
     } catch (err) {
       setError(err.message);
@@ -126,8 +130,9 @@ export default function TurfDetail() {
   }
 
   function openJoinPopup(booking) {
-    if (!user) { navigate('/login'); return; }
+    if (!user) { navigate('/login', { state: { from: location.pathname } }); return; }
     setJoinError('');
+    setJoinOverlapsElsewhere(false);
     setJoiningBooking(booking);
   }
 
@@ -135,9 +140,14 @@ export default function TurfDetail() {
     setJoinSubmitting(true);
     setJoinError('');
     try {
-      await api.joinBooking(joiningBooking.id, token);
-      setJoiningBooking(null);
-      navigate('/my-bookings');
+      const data = await api.joinBooking(joiningBooking.id, token);
+      if (data.overlaps_with_other_booking) {
+        setJoinOverlapsElsewhere(true);
+        setJoiningBooking((b) => ({ ...b, _joined: true }));
+      } else {
+        setJoiningBooking(null);
+        navigate('/my-bookings');
+      }
     } catch (err) {
       setJoinError(err.message);
     } finally {
@@ -309,6 +319,12 @@ export default function TurfDetail() {
           }
         >
           <h2 style={{ marginTop: 0 }}>{pendingBooking.payment_type === 'free' ? 'Booking Confirmed' : 'Confirm Booking'}</h2>
+          {overlapsElsewhere && (
+            <div className="disclaimer-banner">
+              Booking for a friend? Share this booking's details with them so they know where to go.
+              <div style={{ marginTop: 8 }}><ShareButton booking={{ id: pendingBooking.id, turf_name: turf.name, booking_date: pendingBooking.booking_date, start_time: pendingBooking.start_time, end_time: pendingBooking.end_time }} /></div>
+            </div>
+          )}
           <div className="ticket-section-title">Details</div>
           <div className="ticket-row"><span>Date</span><span>{formatDateNice(pendingBooking.booking_date)}</span></div>
           <div className="ticket-row"><span>Time</span><span>{pendingBooking.start_time}–{pendingBooking.end_time}</span></div>
@@ -330,25 +346,43 @@ export default function TurfDetail() {
       {joiningBooking && (
         <TicketModal
           turf={turf}
-          onClose={() => setJoiningBooking(null)}
+          onClose={() => {
+            const wasJoined = joiningBooking._joined;
+            setJoiningBooking(null);
+            if (wasJoined) navigate('/my-bookings');
+          }}
           footer={
-            <>
-              <button className="btn-secondary" onClick={() => setJoiningBooking(null)} disabled={joinSubmitting}>Cancel</button>
-              <button className="btn-primary" onClick={confirmJoin} disabled={joinSubmitting}>
-                {joinSubmitting ? 'Joining…' : 'Confirm & Join'}
+            joiningBooking._joined ? (
+              <button className="btn-primary" style={{ width: '100%' }} onClick={() => { setJoiningBooking(null); navigate('/my-bookings'); }}>
+                Continue to My Bookings
               </button>
-            </>
+            ) : (
+              <>
+                <button className="btn-secondary" onClick={() => setJoiningBooking(null)} disabled={joinSubmitting}>Cancel</button>
+                <button className="btn-primary" onClick={confirmJoin} disabled={joinSubmitting}>
+                  {joinSubmitting ? 'Joining…' : 'Confirm & Join'}
+                </button>
+              </>
+            )
           }
         >
-          <h2 style={{ marginTop: 0 }}>Join This Game?</h2>
+          <h2 style={{ marginTop: 0 }}>{joiningBooking._joined ? 'You\'re In!' : 'Join This Game?'}</h2>
+          {joinOverlapsElsewhere && (
+            <div className="disclaimer-banner">
+              Booking for a friend? Share this game's details with them so they know where to go.
+              <div style={{ marginTop: 8 }}><ShareButton booking={{ id: joiningBooking.id, turf_name: turf.name, booking_date: joiningBooking.booking_date, start_time: joiningBooking.start_time, end_time: joiningBooking.end_time }} /></div>
+            </div>
+          )}
           <div className="ticket-section-title">Details</div>
           <div className="ticket-row"><span>Date</span><span>{formatDateNice(joiningBooking.booking_date)}</span></div>
           <div className="ticket-row"><span>Time</span><span>{joiningBooking.start_time}–{joiningBooking.end_time}</span></div>
           <div className="ticket-row"><span>Players</span><span>{joiningBooking.joined_count}/{joiningBooking.max_players}</span></div>
           {joinError && <div className="error-text">{joinError}</div>}
-          <p className="subtle small" style={{ marginTop: 10 }}>
-            Disclaimer: joining is free — only the person who created this open booking pays.
-          </p>
+          {!joiningBooking._joined && (
+            <p className="subtle small" style={{ marginTop: 10 }}>
+              Disclaimer: joining is free — only the person who created this open booking pays.
+            </p>
+          )}
         </TicketModal>
       )}
 

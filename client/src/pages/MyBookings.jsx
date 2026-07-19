@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import TicketModal from '../components/TicketModal';
@@ -32,7 +33,11 @@ function BookingRow({ b, onCancel, onPay, onLeave, payingId, leavingId, onOpenDe
           {b.payment_type !== 'free' && ` · ₹${b.amount_due} due`}
           {b.payment_status === 'paid' && ' · paid'}
           {b.status === 'cancelled' && b.refund_amount != null && ` · refund: ₹${b.refund_amount}`}
-          {isJoined && <> · created by {PLAYER_ICON} {b.creator_name}</>}
+          {isJoined && (
+            <> · created by {PLAYER_ICON}{' '}
+              <Link to={`/users/${b.created_by}`} onClick={(e) => e.stopPropagation()}>{b.creator_name}</Link>
+            </>
+          )}
         </div>
       </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }} onClick={(e) => e.stopPropagation()}>
@@ -41,11 +46,14 @@ function BookingRow({ b, onCancel, onPay, onLeave, payingId, leavingId, onOpenDe
             {payingId === b.id ? 'Paying…' : 'Pay Now'}
           </button>
         )}
-        {onCancel && b.booking_type === 'open' && b.status !== 'cancelled' && (
+        {onCancel && b.status !== 'cancelled' && (
           <ShareButton booking={b} className="btn-secondary small" />
         )}
         {onCancel && b.status !== 'cancelled' && (
           <button className="btn-secondary small" onClick={() => onCancel(b)}>Cancel</button>
+        )}
+        {onLeave && b.status !== 'cancelled' && (
+          <ShareButton booking={b} className="btn-secondary small" />
         )}
         {onLeave && b.status !== 'cancelled' && (
           <button className="btn-secondary small" onClick={() => onLeave(b.id)} disabled={leavingId === b.id}>
@@ -225,7 +233,9 @@ export default function MyBookings() {
               <div className="ticket-person-badge">
                 <span>{PLAYER_ICON}</span>
                 <div>
-                  <div style={{ fontWeight: 700 }}>{detailBooking.booking.creator_name}</div>
+                  <div style={{ fontWeight: 700 }}>
+                    <Link to={`/users/${detailBooking.booking.created_by}`}>{detailBooking.booking.creator_name}</Link>
+                  </div>
                   <div className="subtle small">{detailBooking.booking.creator_email}</div>
                 </div>
               </div>
@@ -257,7 +267,7 @@ export default function MyBookings() {
                   detailParticipants.map((p) => (
                     <div className="ticket-participant-row" key={p.id}>
                       <span>{PLAYER_ICON}</span>
-                      <span>{p.name}</span>
+                      <Link to={`/users/${p.id}`}>{p.name}</Link>
                       {p.id === detailBooking.booking.created_by && <span className="chip">Creator</span>}
                     </div>
                   ))

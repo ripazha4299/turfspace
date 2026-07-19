@@ -2,9 +2,11 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
+const { OAuth2Client } = require('google-auth-library');
 const db = require('../db');
 
 const router = express.Router();
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 function signToken(user) {
   return jwt.sign(
@@ -63,6 +65,57 @@ router.post('/login', (req, res) => {
 
   const valid = bcrypt.compareSync(password, user.password_hash);
   if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
+
+  const token = signToken(user);
+  res.json({ token, user: publicUser(user) });
+});
+
+// POST /api/auth/google -- sign in (or auto-register) via a Google ID token.
+// The frontend gets this token from Google's own sign-in button/SDK and just
+// forwards it here; we never see the person's Google password, only a signed
+// token we verify against Google's servers.
+//
+// New accounts created this way default to role 'player' -- Google's one-tap
+// flow doesn't have a natural place to ask "player or owner?", so an owner who
+// wants to sign up via Google would need a follow-up step (not built yet) to
+// change their role after the fact, or just use email/password registration
+// instead for now.
+router.post('/google', async (req, res) => {
+  const { credential } = req.body;
+  if (!credential) return res.status(400).json({ error: 'credential is required' });
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    return res.status(500).json({ error: 'Google sign-in is not configured on this server yet' });
+  }
+
+  let payload;
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    payload = ticket.getPayload();
+  } catch (err) {
+    return res.status(401).json({ error: 'Invalid Google credential' });
+  }
+
+  if (!payload || !payload.email) {
+    return res.status(401).json({ error: 'Google account has no email to sign in with' });
+  }
+
+  const email = payload.email.toLowerCase();
+  let user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+
+  if (!user) {
+    const id = uuidv4();
+    // Google-authenticated accounts have no password of their own. Store an
+    // unusable random hash so the NOT NULL constraint is satisfied and
+    // email+password login can never succeed for this account by coincidence.
+    const password_hash = bcrypt.hashSync(uuidv4() + uuidv4(), 10);
+    db.prepare(
+      `INSERT INTO users (id, name, email, password_hash, role) VALUES (?, ?, ?, ?, ?)`
+    ).run(id, payload.name || email, email, password_hash, 'player');
+    user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+  }
 
   const token = signToken(user);
   res.json({ token, user: publicUser(user) });
