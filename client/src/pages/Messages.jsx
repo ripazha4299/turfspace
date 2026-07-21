@@ -85,7 +85,7 @@ export default function Messages() {
           {loadingList ? (
             <p className="subtle">Loading…</p>
           ) : conversations.length === 0 ? (
-            <p className="subtle">No conversations yet. Message someone from their profile to start one.</p>
+            <p className="subtle" style={{ padding: '5px' }}>No conversations yet. Message someone from their profile to start one.</p>
           ) : (
             conversations.map((c) => (
               <div
@@ -104,7 +104,7 @@ export default function Messages() {
         </div>
 
         <div className={`messages-thread-pane ${!userId ? 'hide-on-mobile' : ''}`}>
-          {!userId && <p className="subtle">Select a conversation to view it.</p>}
+          {!userId && <p className="subtle" style={{ padding: '5px' }}>Select a conversation to view it.</p>}
           {userId && loadingThread && <p className="subtle">Loading…</p>}
           {userId && thread && (
             <>
