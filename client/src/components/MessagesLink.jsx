@@ -20,8 +20,8 @@ export default function MessagesLink({ onClick }) {
   if (!user) return null;
 
   return (
-    <Link to="/messages" onClick={onClick} className="nav-user-link">
-      💬 Messages
+    <Link to="/messages" onClick={onClick} className="nav-user-link home-alert-btn">
+      💬
       {unreadCount > 0 && <span className="notif-badge" style={{ position: 'static' }}>{unreadCount}</span>}
     </Link>
   );
