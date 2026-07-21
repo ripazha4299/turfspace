@@ -3,15 +3,20 @@ import { createContext, useContext, useEffect, useState } from 'react';
 const ThemeContext = createContext(null);
 
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(() => localStorage.getItem('turfspace_theme') || 'light');
+  const [theme, setTheme] = useState('dark');
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('turfspace_theme', theme);
-  }, [theme]);
+    document.documentElement.setAttribute('data-theme', 'dark');
+    document.documentElement.style.colorScheme = 'dark';
+    localStorage.setItem('turfspace_theme', 'dark');
+  }, []);
+
+  useEffect(() => {
+    setTheme('dark');
+  }, []);
 
   function toggleTheme() {
-    setTheme((t) => (t === 'light' ? 'dark' : 'light'));
+    setTheme('dark');
   }
 
   return (
