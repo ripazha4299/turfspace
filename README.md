@@ -1,4 +1,9 @@
 # TurfSpace — MVP Codebase
+TurfSpace 2.0 [Redesigned as a 16-bit game 22 July 2026]
+<img width="1902" height="946" alt="image" src="https://github.com/user-attachments/assets/a35e8f44-6154-4b71-b97a-998d4e0f5eee" />
+
+TurfSpace [Initial Design]
+<img width="1905" height="870" alt="image" src="https://github.com/user-attachments/assets/2033a385-7195-422b-896d-6ca36e1c7a1e" />
 
 ## Latest round: messaging, Google SSO, campaigns, profiles, and fixes
 
