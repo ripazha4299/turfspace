@@ -19,6 +19,14 @@ TurfSpace [Initial Design]
   turfs. Email is deliberately never shown on a public profile.
 - **Share any booking, join only the open ones** — the shareable `/games/:id` page now works for
   private bookings too (shows details, no join button); only open bookings are joinable.
+- **Sport-filtered search from the homepage** — turf cards on the home page now route directly to
+  the search page with that sport already selected, and the search page reads `sports` / `city`
+  query params so the filters persist in the URL.
+- **Global loading state** — a new app-wide loader spinner appears during API fetches with the
+  message “Good things take time.”
+- **Past open bookings are now completed** — open bookings whose date/time has already passed are
+  automatically marked as `completed`, removed from joinable open-game listings, and surfaced in
+  My Bookings behind a new `Show completed` filter.
 - **Banner campaigns** — owners can run a full-width promotional banner on the turf search page
   (their own promo image/text on one side, live turf details — photo, description, price — on the
   other). Manage campaigns from the Owner Dashboard.
