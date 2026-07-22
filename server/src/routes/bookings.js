@@ -95,6 +95,14 @@ function minutesUntilSlotStart(booking_date, start_time) {
   return (slotStart.getTime() - now.getTime()) / 60000;
 }
 
+function completePastBookings() {
+  db.prepare(
+    `UPDATE bookings SET status = 'completed'
+     WHERE status IN ('pending_payment', 'confirmed')
+       AND datetime(booking_date || ' ' || end_time) <= datetime('now')`
+  ).run();
+}
+
 // POST /api/bookings -- Flow A (private) & Flow B (open) -- Epic 2 & 3, P0
 // The creator is the only one who pays (per payment_type); anyone who joins an
 // open booking later joins for free -- see /:id/join below.
@@ -195,6 +203,8 @@ router.post('/:id/pay', requireAuth, (req, res) => {
 // turf_id scopes this to a single turf's open bookings -- used by the PDP's
 // "Available Open Bookings" side panel.
 router.get('/open', (req, res) => {
+  completePastBookings();
+
   const { city, sports, date, turf_id } = req.query;
   let query = `
     SELECT b.*, t.name as turf_name, t.city as turf_city, t.sports as turf_sports, t.address, t.cover_image as turf_cover_image,
@@ -236,6 +246,7 @@ router.get('/open', (req, res) => {
 
 // POST /api/bookings/:id/join -- Epic 3, P0 (Solo Joiner joins)
 router.post('/:id/join', requireAuth, requireRole('player'), (req, res) => {
+  completePastBookings();
   const booking = db.prepare('SELECT * FROM bookings WHERE id = ?').get(req.params.id);
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
   if (booking.booking_type !== 'open') return res.status(400).json({ error: 'This booking is not joinable' });

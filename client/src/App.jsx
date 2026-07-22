@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import NavBar from './components/NavBar';
 import RequireRole from './components/RequireRole';
+import GlobalLoader from './components/GlobalLoader';
 
 import Home from './pages/Home';
 import About from './pages/About';
@@ -115,6 +116,7 @@ export default function App() {
       <ThemeProvider>
         <AuthProvider>
           <BrowserRouter>
+            <GlobalLoader />
             <AppRoutes />
           </BrowserRouter>
         </AuthProvider>

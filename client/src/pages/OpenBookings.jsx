@@ -85,7 +85,7 @@ export default function OpenBookings() {
 
       <form className="search-bar" onSubmit={handleSubmit}>
         <input placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} />
-        <select value={sportType} onChange={(e) => setSportType(e.target.value)}>
+        <select className='select-btn-primary' value={sportType} onChange={(e) => setSportType(e.target.value)}>
           <option value="">Any sport</option>
           {SPORT_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
