@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { SPORT_OPTIONS } from '../constants';
 import CampaignBanner from '../components/CampaignBanner';
@@ -59,8 +59,12 @@ function TurfCard({ turf }) {
 }
 
 export default function Search() {
-  const [city, setCity] = useState('');
-  const [selectedSports, setSelectedSports] = useState([]);
+  const [searchParams] = useSearchParams();
+  const [city, setCity] = useState(() => searchParams.get('city') || '');
+  const [selectedSports, setSelectedSports] = useState(() => {
+    const sportsValue = searchParams.get('sports') || '';
+    return sportsValue ? sportsValue.split(',') : [];
+  });
   const [bookingTypeFilter, setBookingTypeFilter] = useState([]); // ['open'] and/or ['private']
   const [priceSort, setPriceSort] = useState('');
   const [turfs, setTurfs] = useState([]);
@@ -101,7 +105,13 @@ export default function Search() {
   useEffect(() => {
     runSearch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSports, priceSort, bookingTypeFilter]);
+  }, [city, selectedSports, priceSort, bookingTypeFilter]);
+
+  useEffect(() => {
+    const sportsValue = searchParams.get('sports') || '';
+    setSelectedSports(sportsValue ? sportsValue.split(',') : []);
+    setCity(searchParams.get('city') || '');
+  }, [searchParams]);
 
   function toggleSport(sport) {
     setSelectedSports((s) => (s.includes(sport) ? s.filter((x) => x !== sport) : [...s, sport]));

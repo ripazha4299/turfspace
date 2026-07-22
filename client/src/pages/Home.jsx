@@ -12,19 +12,22 @@ const featureCards = [
     title: 'Search',
     description: 'Find turfs near you with real-time availability, rates, and schedules.',
     accent: 'mint',
-    icon: searchIcon,
+    hoverText: 'SCANNING...',
+    icon: 'search',
   },
   {
     title: 'Book or join',
     description: 'Book privately or mark it open so others nearby can join your game.',
     accent: 'gold',
-    icon: bookOrJoinIcon,
+    hoverText: 'PLAYER JOINED',
+    icon: 'sports_soccer',
   },
   {
     title: 'Play',
     description: 'Build a playing circle in your new city instead of starting from zero.',
     accent: 'blue',
-    icon: groupsIcon,
+    hoverText: 'SOCIAL COMBO!',
+    icon: 'groups',
   },
 ];
 
@@ -48,7 +51,7 @@ const turfCards = [
     image: basketballIcon,
   },
   {
-    title: 'badminton',
+    title: 'Badminton',
     badge: 'FULL',
     accent: 'muted',
     image: badmintonIcon,
@@ -58,7 +61,7 @@ const turfCards = [
 export default function Home() {
   return (
     <div className="home-shell">
-      <main>
+      <main className="home-main">
         <section className="hero">
           <div className="hero-content">
             <div className="hero-badge">PLAYER 1 READY?</div>
@@ -84,23 +87,30 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="features" className="features-section">
-          <div className="section-heading">
-            <h2>System Features</h2>
-            <div className="section-divider" />
-          </div>
-          <div className="feature-grid">
-            {featureCards.map((card) => (
-              <article key={card.title} className={`feature-card feature-card-homepage ${card.accent}`}>
-                <div className="feature-icon">
-                  <img src={card.icon} alt={card.title} className="feature-icon-image" />
-                </div>
-                <div className="feature-content">
-                  <h3>{card.title}</h3>
-                  <p>{card.description}</p>
-                </div>
-              </article>
-            ))}
+        <section id="features" className="py-margin-lg bg-background bg-grid-pattern border-b-8 border-pixel-black">
+          <div className="max-w-container-max mx-auto px-margin-md">
+            <div className="flex flex-col items-center mb-16">
+                <h2 className="font-headline-md text-headline-md text-pixel-white mb-4 uppercase">System Features</h2>
+                <div className="w-32 h-2 bg-primary"></div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {featureCards.map((card) => (
+                <article key={card.title} className={`bg-surface-container border-4 border-pixel-black pixel-bevel-outset p-margin-md hover:bg-surface-container-high transition-colors group ${card.accent}`}>
+                    <div
+                      className={`mb-6 w-16 h-16 flex items-center justify-center pixel-border-thick background-${card.accent}`}>
+                      <span className="material-symbols-outlined text-4xl text-pixel-white material-symbols-outlined">{card.icon}</span>
+                  </div>
+                  <h3 className={`font-headline-sm text-headline-sm mb-4 uppercase font-${card.accent}`}>{card.title}</h3>
+                  <p className="font-body-md text-body-md text-on-surface-variant mb-6">
+                      {card.description}
+                  </p>
+                  <div
+                      className={`flex items-center font-headline-sm text-headline-sm opacity-0 group-hover:opacity-100 transition-opacity font-${card.accent}`}>
+                      {card.hoverText}
+                  </div>
+                </article>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -116,15 +126,18 @@ export default function Home() {
           </div>
           <div className="turf-grid">
             {turfCards.map((card) => (
-              <article key={card.title} className={`turf-card ${card.accent}`}>
-                <div className="turf-image">
-                  {card.image ? <img src={card.image} alt={card.title} /> : <div className="turf-placeholder" />}
+              <Link
+                key={card.title}
+                to={`/search?sports=${encodeURIComponent(card.title)}`}
+                className={`homepage-sport-card bg-surface border-4 border-pixel-black pixel-bevel-outset p-4 hover:-translate-y-2 transition-transform cursor-pointer group ${card.accent}`}>
+                <div className="bg-pixel-black aspect-square mb-4 flex items-center justify-center overflow-hidden border-2 border-surface-variant">
+                  {card.image ? <img src={card.image} className="w-full h-full object-cover pixelated" alt={card.title} /> : <div className="turf-placeholder" />}
                 </div>
                 <div className="turf-card-footer">
-                  <span style={{ paddingLeft: '10px' }}>{card.title}</span>
-                  <strong>{card.badge}</strong>
+                  <span className="font-headline-sm text-headline-sm text-arcade-white uppercase">{card.title}</span>
+                  <span className="bg-arcade-blue text-pixel-white px-2 py-1 text-[10px] font-bold">{card.badge}</span>
                 </div>
-              </article>
+              </Link>
             ))}
           </div>
         </section>

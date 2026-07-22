@@ -5,6 +5,14 @@ const { publicUser } = require('./auth');
 
 const router = express.Router();
 
+function completePastBookings() {
+  db.prepare(
+    `UPDATE bookings SET status = 'completed'
+     WHERE status IN ('pending_payment', 'confirmed')
+       AND datetime(booking_date || ' ' || end_time) <= datetime('now')`
+  ).run();
+}
+
 // GET /api/users/me
 router.get('/me', requireAuth, (req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
@@ -33,6 +41,7 @@ router.put('/me', requireAuth, (req, res) => {
 
 // GET /api/users/me/bookings -- past booking history (P1, Solo Joiner)
 router.get('/me/bookings', requireAuth, (req, res) => {
+  completePastBookings();
   const parseSports = (row) => {
     try { row.turf_sports = JSON.parse(row.turf_sports || '[]'); } catch (e) { row.turf_sports = []; }
     return row;

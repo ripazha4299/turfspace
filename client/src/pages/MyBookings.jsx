@@ -21,7 +21,7 @@ function BookingRow({ b, onCancel, onPay, onLeave, payingId, leavingId, onOpenDe
   const needsPayment = b.status === 'pending_payment' && b.payment_status === 'pending';
   return (
     <li className="booking-row booking-row-clickable" onClick={() => onOpenDetail(b)}>
-      <div>
+      <div className="booking-row-content">
         <strong>{b.turf_name}</strong> · {b.turf_city} · {(b.turf_sports || []).join(', ')}
         <div className="subtle small">
           {b.booking_date} · {b.start_time}–{b.end_time} ·{' '}
@@ -40,7 +40,7 @@ function BookingRow({ b, onCancel, onPay, onLeave, payingId, leavingId, onOpenDe
           )}
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }} onClick={(e) => e.stopPropagation()}>
+      <div className="booking-row-actions" onClick={(e) => e.stopPropagation()}>
         {needsPayment && onPay && (
           <button className="btn-primary small" onClick={() => onPay(b.id)} disabled={payingId === b.id}>
             {payingId === b.id ? 'Paying…' : 'Pay Now'}
@@ -74,6 +74,7 @@ export default function MyBookings() {
   const [payingId, setPayingId] = useState(null);
   const [leavingId, setLeavingId] = useState(null);
   const [showCancelled, setShowCancelled] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
   const [detailBooking, setDetailBooking] = useState(null); // { booking, isJoined }
   const [detailParticipants, setDetailParticipants] = useState(null);
 
@@ -152,8 +153,16 @@ export default function MyBookings() {
     }
   }
 
-  const visibleCreated = showCancelled ? created : created.filter((b) => b.status !== 'cancelled');
-  const visibleJoined = showCancelled ? joined : joined.filter((b) => b.status !== 'cancelled');
+  const visibleCreated = created.filter((b) => {
+    if (!showCancelled && b.status === 'cancelled') return false;
+    if (!showCompleted && b.status === 'completed') return false;
+    return true;
+  });
+  const visibleJoined = joined.filter((b) => {
+    if (!showCancelled && b.status === 'cancelled') return false;
+    if (!showCompleted && b.status === 'completed') return false;
+    return true;
+  });
 
   // Computes the cancellation-fee breakdown to show in the confirm dialog --
   // a fee only ever applies if money was actually collected (payment_status paid).
@@ -166,12 +175,18 @@ export default function MyBookings() {
 
   return (
     <div className="page">
-      <div className="card-header-row" style={{ marginBottom: 16 }}>
-        <h1 style={{ margin: 0 }}>My bookings</h1>
-        <label className="filter-option" style={{ padding: 0 }}>
-          <input type="checkbox" checked={showCancelled} onChange={() => setShowCancelled((s) => !s)} />
-          Show cancelled
-        </label>
+      <div className="card-header-row bookings-page-header">
+        <h1>My bookings</h1>
+        <div className="bookings-page-filters">
+          <label className="filter-option">
+            <input type="checkbox" checked={showCancelled} onChange={() => setShowCancelled((s) => !s)} />
+            Show cancelled
+          </label>
+          <label className="filter-option">
+            <input type="checkbox" checked={showCompleted} onChange={() => setShowCompleted((s) => !s)} />
+            Show completed
+          </label>
+        </div>
       </div>
       {loading && <p className="subtle">Loading…</p>}
       {error && <div className="error-text">{error}</div>}
