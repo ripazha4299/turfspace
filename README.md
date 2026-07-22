@@ -44,16 +44,6 @@ TurfSpace [Initial Design]
 - **Fixed: login redirect losing your place** — following a shared link while logged out, then
   logging in or registering, now correctly returns you to that same page instead of a generic one.
 
-### Setting up Google Sign-In (required for that feature to work)
-1. Go to https://console.cloud.google.com/apis/credentials, create an OAuth Client ID of type
-   **Web application**.
-2. Under "Authorized JavaScript origins," add your frontend's URL (e.g. `http://localhost:5173`
-   for local dev, and your real deployed frontend URL later).
-3. Copy the generated Client ID into **both** `client/.env` (`VITE_GOOGLE_CLIENT_ID`) and
-   `server/.env` (`GOOGLE_CLIENT_ID`) — same value in both places.
-4. Without this, the Google button still renders but signing in will fail with a clear error
-   rather than crashing anything.
-
 Full-stack implementation of the TurfSpace MVP (see PRD): a two-sided marketplace connecting
 relocating professionals ("Individual Players") with sports venues ("Turf Owners"), scoped to the
 P0/P1 stories — search & discovery, private booking, open/joinable booking, turf owner management,
