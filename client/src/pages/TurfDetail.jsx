@@ -11,10 +11,12 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function durationHours(start, end) {
+function addHoursToTime(start, hours) {
   const [sh, sm] = start.split(':').map(Number);
-  const [eh, em] = end.split(':').map(Number);
-  return (eh * 60 + em - (sh * 60 + sm)) / 60;
+  const totalMinutes = sh * 60 + sm + Math.round(hours * 60);
+  const endHours = Math.floor(totalMinutes / 60) % 24;
+  const endMinutes = totalMinutes % 60;
+  return `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
 }
 
 function formatDateNice(iso) {
@@ -35,6 +37,7 @@ export default function TurfDetail() {
 
   const [bookingType, setBookingType] = useState('private');
   const [startTime, setStartTime] = useState('18:00');
+  const [slotHours, setSlotHours] = useState(1);
   const [endTime, setEndTime] = useState('19:00');
   const [maxPlayers, setMaxPlayers] = useState(10);
   const [paymentType, setPaymentType] = useState('full');
@@ -61,6 +64,10 @@ export default function TurfDetail() {
     api.getTurf(id).then((data) => setTurf(data.turf));
   }, [id]);
 
+  useEffect(() => {
+    setEndTime(addHoursToTime(startTime, slotHours));
+  }, [startTime, slotHours]);
+
   function loadOpenForTurf() {
     api.openBookings({ turf_id: id }).then((data) => setOpenForTurf(data.bookings));
   }
@@ -70,7 +77,7 @@ export default function TurfDetail() {
   }, [id]);
 
   const images = turf ? (turf.cover_image ? [turf.cover_image, ...(turf.gallery || [])] : (turf.gallery || [])) : [];
-  const estimatedAmount = turf ? Math.round(turf.rate_per_hour * durationHours(startTime, endTime)) : 0;
+  const estimatedAmount = turf ? Math.round(turf.rate_per_hour * slotHours) : 0;
 
   function paymentOptionsFor(t) {
     const options = [{ value: 'full', label: 'Full payment' }];
@@ -237,9 +244,17 @@ export default function TurfDetail() {
               </div>
               <div className="time-row">
                 <TimeSlotPicker label="Start time" value={startTime} onChange={setStartTime} />
-                <TimeSlotPicker label="End time" value={endTime} onChange={setEndTime} />
+                <label>
+                  Duration
+                  <select value={slotHours} onChange={(e) => setSlotHours(Number(e.target.value))}>
+                    <option value={1}>1 hr</option>
+                    <option value={1.5}>1.5 hr</option>
+                    <option value={3}>3 hrs</option>
+                    <option value={6}>6 hrs</option>
+                  </select>
+                </label>
               </div>
-              <p className="subtle small">Minimum 1 hour, in 30-minute increments.</p>
+              <p className="subtle small">Choose one of the available slot lengths.</p>
 
               {bookingType === 'open' && (
                 <label>Max players<input type="number" min={2} max={30} value={maxPlayers} onChange={(e) => setMaxPlayers(e.target.value)} /></label>

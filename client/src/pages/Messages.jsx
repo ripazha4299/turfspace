@@ -128,6 +128,7 @@ export default function Messages() {
                   placeholder="Write a message…"
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
+                  className="select-btn-primary"
                 />
                 <button className="btn-primary" disabled={sending} type="submit">Send</button>
               </form>

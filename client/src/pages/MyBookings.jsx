@@ -21,7 +21,7 @@ function BookingRow({ b, onCancel, onPay, onLeave, payingId, leavingId, onOpenDe
   const needsPayment = b.status === 'pending_payment' && b.payment_status === 'pending';
   return (
     <li className="booking-row booking-row-clickable" onClick={() => onOpenDetail(b)}>
-      <div>
+      <div className="booking-row-content">
         <strong>{b.turf_name}</strong> · {b.turf_city} · {(b.turf_sports || []).join(', ')}
         <div className="subtle small">
           {b.booking_date} · {b.start_time}–{b.end_time} ·{' '}
@@ -40,7 +40,7 @@ function BookingRow({ b, onCancel, onPay, onLeave, payingId, leavingId, onOpenDe
           )}
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }} onClick={(e) => e.stopPropagation()}>
+      <div className="booking-row-actions" onClick={(e) => e.stopPropagation()}>
         {needsPayment && onPay && (
           <button className="btn-primary small" onClick={() => onPay(b.id)} disabled={payingId === b.id}>
             {payingId === b.id ? 'Paying…' : 'Pay Now'}
@@ -175,14 +175,14 @@ export default function MyBookings() {
 
   return (
     <div className="page">
-      <div className="card-header-row" style={{ marginBottom: 16 }}>
-        <h1 style={{ margin: 0 }}>My bookings</h1>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-          <label className="filter-option" style={{ padding: 0 }}>
+      <div className="card-header-row bookings-page-header">
+        <h1>My bookings</h1>
+        <div className="bookings-page-filters">
+          <label className="filter-option">
             <input type="checkbox" checked={showCancelled} onChange={() => setShowCancelled((s) => !s)} />
             Show cancelled
           </label>
-          <label className="filter-option" style={{ padding: 0 }}>
+          <label className="filter-option">
             <input type="checkbox" checked={showCompleted} onChange={() => setShowCompleted((s) => !s)} />
             Show completed
           </label>
