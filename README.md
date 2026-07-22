@@ -1,12 +1,16 @@
 # TurfSpace — MVP Codebase
 TurfSpace 2.0 [Redesigned as a 16-bit game 22 July 2026]
-<img width="1902" height="946" alt="image" src="https://github.com/user-attachments/assets/a35e8f44-6154-4b71-b97a-998d4e0f5eee" />
-<img width="387" height="830" alt="image" src="https://github.com/user-attachments/assets/230d4dd4-a347-4e6c-80aa-10b85229acb3" /><img width="417" height="828" alt="image" src="https://github.com/user-attachments/assets/506a549d-fba5-4523-820b-c108e25ce4e3" />
-
+<img width="1891" height="897" alt="image" src="https://github.com/user-attachments/assets/4828042a-e483-4493-9f1a-d957aa2d42c0" />
+<img width="387" height="830" alt="image" src="https://github.com/user-attachments/assets/230d4dd4-a347-4e6c-80aa-10b85229acb3" /><img width="402" height="837" alt="image" src="https://github.com/user-attachments/assets/5bb9724d-54e6-4688-ba3c-67388561b3e8" />
+<img width="417" height="828" alt="image" src="https://github.com/user-attachments/assets/506a549d-fba5-4523-820b-c108e25ce4e3" />
 
 
 TurfSpace [Initial Design]
 <img width="1905" height="870" alt="image" src="https://github.com/user-attachments/assets/2033a385-7195-422b-896d-6ca36e1c7a1e" />
+<img width="1600" height="886" alt="image" src="https://github.com/user-attachments/assets/fe8a6e40-8c33-4423-9ece-a63ff76bc01d" />
+
+<img width="281" height="607" alt="image" src="https://github.com/user-attachments/assets/2b4c6ec6-ea15-4843-aabd-e9d24b165f95" /><img width="395" height="797" alt="image" src="https://github.com/user-attachments/assets/12c1d5d3-8173-44dc-aac8-6db6ea0450b8" /><img width="285" height="610" alt="image" src="https://github.com/user-attachments/assets/2933d34f-6488-47a4-9684-f5618ab6f7ad" /><img width="282" height="611" alt="image" src="https://github.com/user-attachments/assets/0dbec825-d106-49ff-b5c9-17f83a51a227" />
+
 
 ## Latest round: messaging, Google SSO, campaigns, profiles, and fixes
 
