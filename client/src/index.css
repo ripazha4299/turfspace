@@ -135,6 +135,15 @@ a { text-decoration: none; color: inherit; }
 .nav-links button {
   transition: color 0.2s ease;
 }
+.nav-links a:hover{
+  color: var(--green-900);
+  text-shadow:
+    -1px -1px 0 white,  
+    1px -1px 0 white,
+    -1px  1px 0 white,
+    1px  1px 0 white;
+
+}
 .nav-links a.home-login-btn:hover{
   color: var(--arcade-white);
 }
